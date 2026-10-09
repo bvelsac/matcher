@@ -26,11 +26,16 @@ were fixed so that it runs and does what the documentation says:
 - **Email addresses** are stored in lower case, since matching with Google Forms is by email.
 - **Data model**: the draft tables for CSV sources, availability responses and assignments were
   removed. Phase 2 implements the model in `docs/functional-analysis.md` instead (time slots,
-  availability declarations, bookings, meeting assignments).
+  availability declarations, bookings, booking positions, meeting assignments).
 - **Sample data** uses fictitious names and addresses instead of real interpreters' details.
 - **Meeting shortcuts** on the "Add meeting" page are now the two recurring parliamentary
   meetings (Uitgebreid Bureau at 12:00, Bureau at 12:15).
 
-Functional analysis (`docs/functional-analysis.md`): the remaining references to a single
-`linked_meeting_id` per booking were updated to the meeting-assignment model, and a meeting's
-staffing is counted as the sum of the booked quantities, consistent with section 3.4.
+Functional analysis (`docs/functional-analysis.md`), version 1.1:
+
+- The remaining references to a single `linked_meeting_id` per booking were updated to the
+  meeting-assignment model.
+- A booking is now a bucket of **booking positions**, one per interpreter. Positions, not whole
+  bookings, are assigned to meetings, so the interpreters of one bureau booking can each go to
+  a different meeting. The name of the person a bureau sends, replacements and actual hours are
+  kept per position. A meeting's staffing is the number of its confirmed assignments.

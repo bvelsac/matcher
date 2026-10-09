@@ -2,7 +2,7 @@
 
 Phase 2 adds the availability and booking model described in
 docs/functional-analysis.md (time slots, availability declarations,
-bookings and meeting assignments).
+bookings, booking positions and meeting assignments).
 """
 from datetime import datetime
 

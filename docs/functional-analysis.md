@@ -1,15 +1,22 @@
 # Functional Analysis
 ## Interpreter Mission Management System
 
-**Version:** 1.0  
-**Date:** November 2025  
+**Version:** 1.1  
+**Date:** October 2026  
 **Document Type:** Conceptual Model & Business Rules
+
+> **1.1:** a booking is now a bucket of positions, one per interpreter, so that the
+> interpreters of one bureau booking can each be dispatched to meetings independently
+> (new section 2.5, scenario 6.4). Actual hours and the name of the person sent are kept
+> per position.
 
 ---
 
 ## 1. Domain Overview
 
-The system manages the reservation and allocation of interpreters across time periods, matching their declared availability with meetings that require interpretation services. The fundamental principle is that **availabilities are declared for time slots**, **bookings reserve interpreter capacity**, and **meetings consume booked capacity** - but these three concepts remain distinct to handle the reality that meetings may be cancelled, rescheduled, or added after availabilities are collected.
+The system manages the reservation and allocation of interpreters across time periods, matching their declared availability with meetings that require interpretation services. The fundamental principle is that **availabilities are declared for time slots**, **bookings reserve interpreter capacity**, and **meetings consume booked capacity** - but these concepts remain distinct to handle the reality that meetings may be cancelled, rescheduled, or added after availabilities are collected.
+
+A booking is the commitment towards the supplier (an individual interpreter or a bureau). Inside a booking, every interpreter is a separate **booking position**, and it is positions - not whole bookings - that are dispatched to meetings. A bureau booked for three interpreters is a bucket of three positions; each of the three can go to a different meeting.
 
 ---
 
@@ -118,94 +125,128 @@ An availability says "I CAN work" but not "I WILL work". Transformation from ava
 
 ### 2.4 Booking
 
-**Definition**: A confirmed or proposed reservation of interpreter capacity for a specific time slot, which may or may not be linked to a meeting.
+**Definition**: A proposed or confirmed reservation of interpreter capacity for a time slot - the commitment towards one supplier. For an individual it reserves one interpreter; for a bureau it reserves a bucket of N interpreters. Each interpreter in the booking is a Booking Position (2.5).
 
 **Properties**:
 
 | Property | Type | Constraint | Description |
 |----------|------|------------|-------------|
 | `booking_id` | Integer | Primary key, unique | System identifier |
-| `interpreter_id` | Integer | Foreign key, required | Who is booked |
+| `interpreter_id` | Integer | Foreign key, required | Who is booked (individual or bureau) |
 | `slot_id` | Integer | Foreign key, required | Which time slot (e.g., Monday 9:00-13:00) |
-| `quantity_booked` | Integer | Required, > 0 | Number of interpreters reserved |
+| `quantity_booked` | Integer | Derived | Number of ACTIVE positions in this booking |
 | `status` | Enum | Required | PROPOSED, CONFIRMED, COMPLETED, CANCELLED |
 | `booking_reason` | String | Optional | Why booked if no meetings assigned yet |
-| `assigned_individuals` | Text | Optional | For bureaus: names of specific interpreters sent |
-| `actual_start_time` | DateTime | Optional | When work actually began (first meeting) |
-| `actual_end_time` | DateTime | Optional | When work actually ended (last meeting) |
 | `notes` | Text | Optional | Administrative notes, override reasons |
 | `created_at` | DateTime | System-generated | When booking created |
 | `updated_at` | DateTime | System-maintained | Last modification |
 | `created_by` | Integer | Foreign key to User | Who created this booking |
 
 **Business Rules**:
-- **BR-BKG-001**: quantity_booked must be <= availability.quantity_available (if availability exists)
-- **BR-BKG-002**: For INDIVIDUAL interpreters, quantity_booked must equal 1
-- **BR-BKG-003**: For BUREAU interpreters, quantity_booked can be 1, 2, 3, ... up to their capacity
+- **BR-BKG-001**: quantity_booked must be <= availability.quantity_available (if availability exists), unless overridden with a documented reason
+- **BR-BKG-002**: For INDIVIDUAL interpreters, a booking has exactly 1 position
+- **BR-BKG-003**: For BUREAU interpreters, a booking has 1, 2, 3, ... positions, up to the bureau's declared capacity
 - **BR-BKG-004**: Status transitions: PROPOSED → CONFIRMED → COMPLETED, or → CANCELLED from any state
 - **BR-BKG-005**: A booking reserves capacity for a time block (e.g., Monday 9-13h)
-- **BR-BKG-006**: Multiple meetings can be assigned to one booking (via Meeting Assignment records)
-- **BR-BKG-007**: Cannot have two CONFIRMED bookings for same interpreter with overlapping time slots
-- **BR-BKG-008**: If status = COMPLETED, actual_start_time and actual_end_time should be populated
+- **BR-BKG-006**: Creating a booking for N interpreters creates N positions, numbered 1..N
+- **BR-BKG-007**: An interpreter or bureau has at most one CONFIRMED booking per time slot, and no CONFIRMED bookings with overlapping time slots. More interpreters from the same bureau for the same slot are added as extra positions on the existing booking (within the declared availability)
+- **BR-BKG-008**: A booking is COMPLETED when the work is done; actual hours are recorded per position (2.5)
 
 **Derived Properties**:
-- `actual_duration_hours`: (actual_end_time - actual_start_time) in hours if completed
-- `assigned_meeting_count`: Count of meetings assigned to this booking
-- `has_meetings`: TRUE if any meetings are assigned
+- `quantity_booked`: Count of ACTIVE positions
+- `assigned_meeting_count`: Number of distinct meetings assigned to any of its positions
+- `free_positions`: ACTIVE positions without any meeting assignment
 - `slot_datetime`: Combined date and time from related slot
 
 **Invariants**:
-- An interpreter cannot have overlapping CONFIRMED bookings (same or overlapping time slots)
-- All meetings assigned to a booking must fall within the booking's time slot
-- Meetings assigned to the same booking must not overlap with each other
+- An interpreter or bureau cannot have overlapping CONFIRMED bookings
+- All meetings assigned to any position of a booking must fall within the booking's time slot
 
 **Key Insight**:
-A booking is a commitment to a TIME BLOCK (e.g., "Monday morning 9-13h"). Within that block, the interpreter can work multiple non-overlapping meetings. If one meeting cancels, the interpreter remains booked and available for other meetings in that time block.
+A booking is the commitment to a supplier for a TIME BLOCK: "Bureau X, 3 interpreters, Monday 9-13h". It does not say where those interpreters go. That happens per position: within the block, each interpreter can work several non-overlapping meetings, and the three interpreters of the bucket can all be at different meetings at the same time.
 
 ---
 
-### 2.5 Meeting Assignment
+### 2.5 Booking Position
 
-**Definition**: The assignment of a booking to a specific meeting - represents that during the booked time block, the interpreter will work this particular meeting.
+**Definition**: One interpreter within a booking. An individual's booking has one position; a bureau booking for N interpreters has N positions. Each position is dispatched to meetings independently of the other positions in the same booking.
+
+**Properties**:
+
+| Property | Type | Constraint | Description |
+|----------|------|------------|-------------|
+| `position_id` | Integer | Primary key, unique | System identifier |
+| `booking_id` | Integer | Foreign key, required | The booking (bucket) this position belongs to |
+| `position_number` | Integer | Required, unique within the booking | 1..N, e.g. "Bureau X - interpreter 2 of 3" |
+| `interpreter_name` | String | Optional | The person actually sent. For an individual: the interpreter. For a bureau: filled in when the bureau communicates it |
+| `status` | Enum | Required | ACTIVE, CANCELLED |
+| `actual_start_time` | DateTime | Optional | When this interpreter actually started |
+| `actual_end_time` | DateTime | Optional | When this interpreter actually finished |
+| `notes` | Text | Optional | E.g. "replacement for X, who fell ill" |
+
+**Business Rules**:
+- **BR-POS-001**: A position belongs to exactly one booking; position_number is unique within that booking
+- **BR-POS-002**: Meetings assigned to one position must not overlap (one person cannot be in two places)
+- **BR-POS-003**: Different positions of the same booking may be assigned to the same meeting or to overlapping meetings - they are different people
+- **BR-POS-004**: When a bureau replaces the person on a position (illness, schedule change), only interpreter_name changes; the position's meeting assignments remain valid. The change is recorded in notes
+- **BR-POS-005**: Cancelling a position (the bureau cannot send that interpreter after all) cancels its meeting assignments; the affected meetings become understaffed and are flagged
+- **BR-POS-006**: interpreter_name must be filled in before the booking is COMPLETED (needed for the overview to HR)
+- **BR-POS-007**: Actual hours are recorded per position, because interpreters at the same meeting can work different hours (one stays longer than another)
+
+**Derived Properties**:
+- `interpreter_id`: From the booking (the individual or the bureau, whose priority applies)
+- `assigned_meetings`: Meetings linked to this position by non-cancelled assignments
+- `free_periods`: Parts of the booking's time block not covered by an assigned meeting
+- `actual_duration_hours`: (actual_end_time - actual_start_time) in hours
+
+**Key Insight**:
+The position is the unit of dispatching. Example:
+- Booking: Bureau X, Monday 9:00-13:00, 3 positions
+- Position 1 → Meeting A (9:00-10:30), then Meeting C (11:00-12:30)
+- Position 2 → Meeting A (9:00-10:30), then Meeting C (11:00-12:30)
+- Position 3 → Meeting B (9:30-11:00), then Meeting C (11:00-12:30)
+
+---
+
+### 2.6 Meeting Assignment
+
+**Definition**: The dispatching of one booking position - one interpreter - to one meeting.
 
 **Properties**:
 
 | Property | Type | Constraint | Description |
 |----------|------|------------|-------------|
 | `assignment_id` | Integer | Primary key, unique | System identifier |
-| `booking_id` | Integer | Foreign key, required | Which booking provides the capacity |
-| `meeting_id` | Integer | Foreign key, required | Which meeting consumes the capacity |
+| `position_id` | Integer | Foreign key, required | Which interpreter (booking position) is dispatched |
+| `meeting_id` | Integer | Foreign key, required | Which meeting |
 | `assignment_status` | Enum | Required | PROPOSED, CONFIRMED, CANCELLED |
 | `notes` | Text | Optional | Assignment-specific notes |
 | `created_at` | DateTime | System-generated | When assignment created |
 | `created_by` | Integer | Foreign key to User | Who created this assignment |
 
 **Business Rules**:
-- **BR-ASGN-001**: The meeting must fall within the booking's time slot
-- **BR-ASGN-002**: Cannot assign overlapping meetings to the same booking (interpreter can't be in two places at once)
-- **BR-ASGN-003**: If booking status = CANCELLED, all assignments must also be CANCELLED
-- **BR-ASGN-004**: An assignment can be cancelled without cancelling the booking (e.g., meeting cancelled, booking preserved)
+- **BR-ASGN-001**: The meeting must fall within the time slot of the position's booking
+- **BR-ASGN-002**: Cannot assign overlapping meetings to the same position
+- **BR-ASGN-003**: If the booking or the position is CANCELLED, its assignments are CANCELLED
+- **BR-ASGN-004**: An assignment can be cancelled without cancelling the position or booking (e.g., meeting cancelled, interpreter stays booked)
 - **BR-ASGN-005**: Assignment status cannot be CONFIRMED if booking status is not CONFIRMED
+- **BR-ASGN-006**: A position can be assigned to a given meeting only once; each assignment puts exactly one interpreter on one meeting
 
 **Derived Properties**:
-- `interpreter_id`: Retrieved from booking.interpreter_id
-- `time_conflict`: TRUE if this meeting overlaps with another meeting assigned to same booking
+- `booking_id`, `interpreter_id`: Retrieved through the position
+- `time_conflict`: TRUE if this meeting overlaps with another meeting assigned to the same position
 
 **Invariants**:
-- All meetings assigned to a booking via assignments must be non-overlapping
-- Assignment can only exist if booking exists
-- Meeting datetime must be within booking's slot datetime range
+- All meetings assigned to one position are non-overlapping
+- An assignment can only exist if its position exists
+- Meeting datetime must be within the booking's slot datetime range
 
 **Key Insight**:
-This junction entity enables ONE booking to serve MULTIPLE meetings. Example:
-- Booking: Monday 9:00-13:00 (4-hour block)
-- Assignment 1: Booking → Meeting A (9:00-10:30)
-- Assignment 2: Booking → Meeting B (11:00-12:30)
-- Interpreter works both meetings under one booking commitment
+Because one assignment = one interpreter, staffing a meeting is a matter of counting its confirmed assignments, whether the interpreters come from one bureau booking, from several individuals, or a mix.
 
 ---
 
-### 2.6 Meeting
+### 2.7 Meeting
 
 **Definition**: A scheduled event requiring interpretation services, which consumes booked interpreter capacity.
 
@@ -229,12 +270,12 @@ This junction entity enables ONE booking to serve MULTIPLE meetings. Example:
 **Business Rules**:
 - **BR-MTG-001**: start_time must be < end_time
 - **BR-MTG-002**: estimated_duration = end_time - start_time (in hours)
-- **BR-MTG-003**: A meeting is staffed through Meeting Assignments that link it to bookings (see 2.5)
+- **BR-MTG-003**: A meeting is staffed through Meeting Assignments (2.6), each putting one interpreter (one booking position) on the meeting
 
 **Derived Properties**:
 - `datetime_start`: date + start_time combined
 - `datetime_end`: date + end_time combined
-- `staffing_count`: Sum of quantity_booked of the bookings linked to this meeting by CONFIRMED meeting assignments
+- `staffing_count`: Number of CONFIRMED meeting assignments for this meeting
 - `staffing_status`: 
   - UNSTAFFED if staffing_count = 0
   - UNDERSTAFFED if staffing_count < interpreters_needed
@@ -243,26 +284,25 @@ This junction entity enables ONE booking to serve MULTIPLE meetings. Example:
 
 **Relationship to Time Slots**:
 - A meeting typically aligns with a time slot or portion of a slot
-- Multiple meetings can occur within the same time slot if non-overlapping
+- Multiple meetings can occur within the same time slot
 - When collecting availability, we create slots for expected meeting times
 
 **Relationship to Bookings**:
-- A meeting is staffed via Meeting Assignments
-- One meeting can have multiple assignments (multiple interpreters)
-- Each assignment links the meeting to a booking
-- The booking provides the interpreter capacity
+- A meeting is staffed by booking positions, via meeting assignments
+- The positions may come from different bookings, or several may come from the same bureau booking
+- The booking provides the commitment; the position provides the person
 
 **Key Insight**:
 Meetings are downstream consumers of booked capacity. The sequence is:
 1. Declare availability for time slots
-2. Create bookings from availability (reserves capacity for time blocks)
+2. Create bookings from availability (reserves capacity for time blocks, one position per interpreter)
 3. Create/identify meetings
-4. Create assignments linking bookings to meetings (assign capacity to specific events)
-5. If a meeting cancels, remove its assignments but preserve bookings for reassignment
+4. Assign positions to meetings
+5. If a meeting cancels, cancel its assignments but keep the bookings and positions for reassignment
 
 ---
 
-### 2.7 CSV Data Source
+### 2.8 CSV Data Source
 
 **Definition**: A configured external source providing availability declarations via HTTP-accessible CSV file.
 
@@ -295,70 +335,72 @@ Meetings are downstream consumers of booked capacity. The sequence is:
 
 ## 3. Conceptual Relationships
 
-### 3.1 The Availability → Booking → Meeting Assignment Flow
+### 3.1 The Availability → Booking → Position → Meeting Flow
 
 ```
-INTERPRETER
+INTERPRETER (individual or bureau)
     |
     | declares capacity for
     ↓
 TIME SLOT ← describes time block (e.g., Monday 9:00-13:00)
     |
-    | referenced by
     ↓
-AVAILABILITY DECLARATION (I CAN work Monday 9-13h, qty: 2)
+AVAILABILITY DECLARATION   (Bureau X CAN provide 3 interpreters, Monday 9-13h)
     |
-    | transforms into (when selected by priority algorithm)
+    | priority algorithm
     ↓
-BOOKING (I WILL work Monday 9-13h, qty: 2, status: CONFIRMED)
+BOOKING                    (Bureau X WILL provide 3 interpreters, Monday 9-13h)
     |
-    | can be assigned to multiple meetings via
+    | one position per interpreter
     ↓
-MEETING ASSIGNMENT ← links → MEETING (Event 9:00-10:30)
-MEETING ASSIGNMENT ← links → MEETING (Event 11:00-12:30)
-MEETING ASSIGNMENT ← links → MEETING (Event 12:30-13:00)
+POSITION 1 ── assignment ──→ MEETING A (9:00-10:30)
+           └─ assignment ──→ MEETING C (11:00-12:30)
+POSITION 2 ── assignment ──→ MEETING A (9:00-10:30)
+           └─ assignment ──→ MEETING C (11:00-12:30)
+POSITION 3 ── assignment ──→ MEETING B (9:30-11:00)
+           └─ assignment ──→ MEETING C (11:00-12:30)
 ```
 
-**Key Principle**: ONE booking (time block) can serve MULTIPLE meetings (events within that block).
+**Key Principle**: The booking is the commitment to the supplier; the positions are the individual interpreters in it. Each position can serve several non-overlapping meetings within the block, independently of the other positions.
 
 ### 3.2 The Independence Principle
 
-**Why separate availability, booking, and meeting?**
+**Why separate availability, booking, position and meeting?**
 
 **Scenario 1: Meeting cancellation within booked block**
 - Monday 9:00-13:00 time slot
-- Bureau Tradho declared available (qty: 2)
-- Booking created: Tradho, Monday 9-13h, qty: 2, status: CONFIRMED
+- Bureau Tradho declared available (qty: 3)
+- Booking created: Tradho, Monday 9-13h, 3 positions, status: CONFIRMED
 - Assignments:
-  - Meeting A (9:00-10:30) → Assignment A
-  - Meeting B (11:00-12:30) → Assignment B
+  - Positions 1 and 2 → Meeting A (9:00-10:30, needs 2)
+  - Position 3 → Meeting B (11:00-12:30, needs 1)
 - Friday: Meeting A CANCELLED
 - **Result**:
-  - Delete Assignment A
-  - Keep Assignment B (Meeting B still happens)
-  - Booking remains CONFIRMED (interpreter commitment for full 9-13h block)
-  - Can create new Assignment C for different meeting in 9-11h window
+  - Cancel the assignments of positions 1 and 2 to Meeting A
+  - Position 3 keeps Meeting B
+  - Booking remains CONFIRMED (commitment for 3 interpreters, 9-13h)
+  - Positions 1 and 2 are free for the whole block and can be dispatched to other meetings, separately
 
 **Scenario 2: Entire booked block no longer needed**
 - Same booking, both Meeting A and B cancel
-- Delete both assignments
+- Cancel all assignments
 - Booking remains CONFIRMED (no meetings assigned)
 - Options:
-  - Find new meetings for this time block
-  - Or: Cancel booking (interpreter gets forfait for blocked time)
+  - Find new meetings for these positions
+  - Or: Cancel booking (interpreters get forfait for blocked time)
 
 **Scenario 3: Availability before meetings confirmed**
 - July: Collect availability for "Monday mornings 9-13h" throughout September
 - Interpreters declare: "I can work Sept 15, 9-13h"
 - August: Create bookings from availability
-- September: Meetings finalized, create assignments linking bookings to specific meetings
-- Interpreter may work 1, 2, or 3 meetings during their 9-13h booking
+- September: Meetings finalized, positions assigned to specific meetings
+- An interpreter may work 1, 2, or 3 meetings during their 9-13h booking
 
 **Scenario 4: Emergency meeting fits into existing booking**
-- Existing booking: Monday 9-13h, assigned to Meeting A (9:00-10:30)
+- Existing booking: Monday 9-13h; position 1 assigned to Meeting A (9:00-10:30)
 - Tuesday: Urgent Meeting B scheduled for Monday 11:00-12:00
-- Check: Same booking has free time 11:00-13:00
-- Create new assignment: Booking → Meeting B
+- Check: position 1 is free from 10:30 to 13:00
+- Assign position 1 → Meeting B
 - No need to create new booking, reuse existing capacity
 
 ### 3.3 The Booking Status Lifecycle
@@ -374,61 +416,64 @@ MEETING ASSIGNMENT ← links → MEETING (Event 12:30-13:00)
          ↓
     CONFIRMED BOOKING (commitment made, capacity blocked)
          ↓
-    (Meeting occurs, work performed)
+    (Meetings occur, work performed)
          ↓
-    COMPLETED BOOKING (actual times logged)
+    COMPLETED BOOKING (actual times logged per position)
 
 Alternative path:
-    CONFIRMED → CANCELLED (interpreter sick, meeting cancelled, etc.)
+    CONFIRMED → CANCELLED (meeting cancelled, interpreter not needed, etc.)
     PROPOSED → CANCELLED (decided not to use)
 ```
 
 **Critical State Properties**:
 
 - **PROPOSED**: No commitment yet, can be freely deleted/modified
-- **CONFIRMED**: Commitment exists, interpreter expects work and payment
-- **COMPLETED**: Work done, payment calculated
-- **CANCELLED**: Was committed, no longer valid (still tracks for audit)
+- **CONFIRMED**: Commitment exists, interpreters expect work and payment
+- **COMPLETED**: Work done, actual hours recorded on each position
+- **CANCELLED**: Was committed, no longer valid (still tracked for audit)
 
-### 3.4 The Booking-Meeting Relationship (Many-to-Many)
+Positions have their own, simpler status: ACTIVE, or CANCELLED when the bureau cannot send that interpreter after all (BR-POS-005). Replacing the person does not cancel the position (BR-POS-004).
 
-**One Booking → Many Meetings**
-- A booking reserves a time block (e.g., Monday 9:00-13:00)
-- Multiple non-overlapping meetings can occur within that block
+### 3.4 Relationships Between Booking, Position and Meeting
+
+**One Booking → N Positions**
+- A booking for an individual has one position; a bureau booking for N interpreters has N positions
+- Extra interpreters from the same bureau for the same slot are added as positions to the same booking
+
+**One Position → Many Meetings**
+- A position belongs to a booking that reserves a time block (e.g., Monday 9:00-13:00)
+- The interpreter in that position can work several non-overlapping meetings within the block
 - Each meeting is linked via a Meeting Assignment
-- Example: Booking (9-13h) → Meeting A (9-10:30) + Meeting B (11-12) + Meeting C (12:30-13)
 
-**One Meeting → Many Bookings**
-- A meeting needing 4 interpreters has 4 bookings assigned to it
-- Each booking represents one interpreter (or one bureau slot)
-- Sum of booking quantities should equal meeting.interpreters_needed
-- Example: Meeting X → Booking 1 (Interpreter A) + Booking 2 (Interpreter B) + Booking 3 (Bureau C, qty=2)
+**One Meeting → Many Positions**
+- A meeting needing 4 interpreters gets 4 assignments, each to one position
+- The positions can come from different bookings, or several from one bureau booking
+- Example: Meeting X → position 1 of Interpreter A's booking + position 1 of Interpreter B's booking + positions 2 and 3 of Bureau C's booking
 
-**Many-to-Many Implementation**:
-- Meeting Assignment is the junction table
-- Enables flexible assignment and reassignment
-- Supports partial cancellations (one meeting cancels, others remain)
+**Implementation**:
+- Meeting Assignment is the junction between Booking Position and Meeting
+- Supports partial cancellations (one meeting cancels, others remain) and per-interpreter dispatching within a bureau booking
 
 **Assignment Rules**:
-- Meetings assigned to same booking MUST NOT overlap temporally
-- All meetings assigned to a booking MUST fall within the booking's time slot
-- If booking is CANCELLED, all its assignments are CANCELLED
-- If a meeting is CANCELLED, only that meeting's assignments are removed
+- Meetings assigned to the same position MUST NOT overlap
+- Different positions of one booking MAY be at overlapping meetings
+- All meetings assigned to a position MUST fall within the booking's time slot
+- If a booking or position is CANCELLED, its assignments are CANCELLED
+- If a meeting is CANCELLED, only that meeting's assignments are cancelled
 
 **Reassignment Scenario**:
 ```
 Initial:
-- Booking: Mon 9-13h, Interpreter X
-- Assignments: Meeting A (9-11h)
+- Booking: Mon 9-13h, Interpreter X (one position)
+- Assignments: position 1 → Meeting A (9-11h)
 
 Meeting A cancels:
-- Delete Assignment (Booking → Meeting A)
-- Booking still exists, free capacity 9-13h
+- Cancel assignment (position 1 → Meeting A)
+- Booking and position still exist, free 9-13h
 
 New meeting added:
 - Meeting D (10-12h) scheduled
-- Create Assignment (Booking → Meeting D)
-- Reuses same booking
+- Assign position 1 → Meeting D
 
 Result:
 - Interpreter X still works Monday 9-13h
@@ -450,32 +495,35 @@ When creating bookings for a time slot, the system:
 **BR-BOOK-002: Greedy Booking Algorithm**
 ```
 remaining_need = desired_quantity (or the meeting's unfilled need when staffing a meeting)
-bookings_created = []
+positions_created = []
 
 FOR each availability IN sorted_by_priority:
     IF remaining_need <= 0:
         BREAK
     
-    can_book = MIN(availability.quantity_available, remaining_need)
-    
-    CREATE booking:
-        interpreter_id = availability.interpreter_id
-        slot_id = availability.slot_id
-        quantity_booked = can_book
-        status = PROPOSED
+    capacity = availability.quantity_available
+               - positions already booked for this interpreter in this slot
+    can_book = MIN(capacity, remaining_need)
+    IF can_book <= 0:
+        CONTINUE
+
+    booking = existing booking of this interpreter for this slot
+              OR CREATE booking (interpreter_id, slot_id, status = PROPOSED)
+    ADD can_book positions to booking
 
     IF staffing a meeting:
-        CREATE meeting assignment (booking → meeting, status = PROPOSED)
+        FOR each new position:
+            CREATE meeting assignment (position → meeting, status = PROPOSED)
     
-    bookings_created.append(booking)
+    positions_created += new positions
     remaining_need -= can_book
 
-RETURN bookings_created, remaining_need
+RETURN positions_created, remaining_need
 ```
 
 **BR-BOOK-003: Partial Fulfillment**
 - If Priority #2 (bureau) has quantity_available = 2, but remaining_need = 5
-- Book all 2 from Priority #2
+- Book 2 positions from Priority #2
 - Continue to Priority #3 for remaining 3
 
 **BR-BOOK-004: Stopping Condition**
@@ -490,14 +538,14 @@ RETURN bookings_created, remaining_need
 ### 4.2 Booking Validation Rules
 
 **BR-VAL-001: No Double-Booking**
-- Cannot create CONFIRMED booking if interpreter already has CONFIRMED booking for overlapping time slot
+- An interpreter or bureau has at most one CONFIRMED booking per time slot, and none with overlapping slots
 - Check: SELECT bookings WHERE interpreter_id = X AND status = CONFIRMED AND slot overlaps
 - Overlapping slots = same date + time ranges intersect
 
 **BR-VAL-002: Capacity Limits**
-- For INDIVIDUAL: quantity_booked must = 1
-- For BUREAU: quantity_booked must <= quantity_available (if availability exists)
-- Cannot book more than declared capacity
+- For INDIVIDUAL: exactly 1 position
+- For BUREAU: number of ACTIVE positions <= quantity_available (if availability exists)
+- Cannot book more than declared capacity without a documented override
 
 **BR-VAL-003: Status Transition Validation**
 - PROPOSED → CONFIRMED: Allowed
@@ -508,15 +556,16 @@ RETURN bookings_created, remaining_need
 - Any → PROPOSED: Not allowed (cannot uncommit)
 
 **BR-VAL-004: Meeting Assignment Validation**
-- When creating assignment linking booking to meeting:
-  - Meeting datetime must fall within booking's time slot
-  - Meeting must not overlap with other meetings assigned to same booking
+- When assigning a position to a meeting:
+  - Meeting datetime must fall within the booking's time slot
+  - Meeting must not overlap with other meetings assigned to the same position
 - Check for temporal conflicts:
   ```sql
   SELECT * FROM meeting_assignments ma
   JOIN meetings m ON ma.meeting_id = m.meeting_id
-  WHERE ma.booking_id = X
-  AND m overlaps with new_meeting
+  WHERE ma.position_id = X
+    AND ma.assignment_status <> 'CANCELLED'
+    AND m overlaps with new_meeting
   ```
 - If conflict found: Reject assignment or flag for manual override
 
@@ -544,8 +593,7 @@ RETURN bookings_created, remaining_need
 ### 4.4 Meeting Staffing Rules
 
 **BR-STAFF-001: Staffing via Meeting Assignments**
-- A meeting's staffing is the sum of quantity_booked of the bookings linked to it by meeting assignments
-- Count only CONFIRMED or COMPLETED assignments
+- A meeting's staffing is the number of its CONFIRMED meeting assignments (one interpreter each)
 - PROPOSED assignments don't count toward staffing
 - CANCELLED assignments don't count
 
@@ -557,12 +605,13 @@ RETURN bookings_created, remaining_need
 **BR-STAFF-003: Unassigned Meeting Creation**
 - Can create meeting even if no assignments exist yet
 - Meeting starts in UNSTAFFED status
-- Workflow: Create meeting → Match to time slot → Create bookings from availability → Create assignments linking bookings to meeting
+- Workflow: Create meeting → Match to time slot → Use free booked positions, or create bookings from availability → Assign positions to meeting
 
 **BR-STAFF-004: Assignment Flexibility**
-- One booking can serve multiple meetings (via multiple assignments)
-- If Meeting A cancels: Delete assignment, keep booking, booking available for other meetings
-- If entire booking no longer needed: Cancel booking (all assignments also cancelled)
+- One position can serve multiple non-overlapping meetings
+- The positions of one bureau booking can be dispatched to different meetings
+- If Meeting A cancels: Cancel its assignments, keep the positions, which become available for other meetings
+- If a whole booking is no longer needed: Cancel booking (all positions and assignments also cancelled)
 
 ---
 
@@ -619,12 +668,12 @@ RETURN bookings_created, remaining_need
 
 ### 5.2 Booking Creation Process (Priority-Based)
 
-**Objective**: Create bookings from availability declarations for a time slot, optionally assigning them to a meeting.
+**Objective**: Book interpreters from availability declarations for a time slot, optionally assigning them to a meeting.
 
 **Input**:
 - slot_id (which time slot)
 - quantity_needed (how many interpreters)
-- meeting_id (optional: if the bookings should be assigned to a specific meeting)
+- meeting_id (optional: if the new positions should be assigned to a specific meeting)
 
 **Steps**:
 
@@ -638,35 +687,34 @@ RETURN bookings_created, remaining_need
    ORDER BY i.priority_order ASC
    ```
 
-2. **Check Existing Bookings**
-   - For each interpreter in availability list:
-     - Check if they already have CONFIRMED booking for this slot
-     - If yes: Exclude from available pool (no double-booking)
+2. **Subtract What Is Already Booked**
+   - For each interpreter in the list: remaining capacity = quantity_available - ACTIVE positions already booked for this slot
+   - Individuals already booked for this slot have no remaining capacity (no double-booking)
+   - A bureau with remaining capacity gets extra positions on its existing booking
 
 3. **Priority-Based Allocation**
    ```
    remaining = quantity_needed
-   proposed_bookings = []
+   new_positions = []
    
    FOR each availability IN sorted_by_priority:
        IF remaining <= 0:
            BREAK
        
-       IF interpreter already has confirmed booking for this slot:
+       can_book = MIN(remaining capacity of this interpreter, remaining)
+       IF can_book <= 0:
            CONTINUE (skip)
        
-       can_book = MIN(availability.quantity_available, remaining)
-       
-       CREATE booking (status = PROPOSED):
-           interpreter_id
-           slot_id
-           quantity_booked = can_book
-           notes = "Priority #X, available Y, booked Z"
+       booking = existing booking for (interpreter, slot)
+                 OR CREATE booking (status = PROPOSED)
+       ADD can_book positions to booking
+       ADD note "Priority #X, available Y, booked Z"
 
        IF meeting_id provided:
-           CREATE meeting assignment (booking → meeting, status = PROPOSED)
+           FOR each new position:
+               CREATE meeting assignment (position → meeting, status = PROPOSED)
        
-       proposed_bookings.append(booking)
+       new_positions += the new positions
        remaining -= can_book
    ```
 
@@ -675,17 +723,17 @@ RETURN bookings_created, remaining_need
    - IF remaining > 0: Insufficient capacity, flag for manual intervention
 
 5. **Return**
-   - List of PROPOSED bookings
+   - List of PROPOSED bookings and their new positions
    - Remaining unfilled quantity
    - Audit log (who was considered, why selected/skipped)
 
-**Output**: Set of PROPOSED bookings + staffing status
+**Output**: PROPOSED bookings and positions + staffing status
 
 ---
 
 ### 5.3 Meeting Assignment Process
 
-**Objective**: Create assignments linking bookings to a meeting.
+**Objective**: Assign booked interpreters (positions) to a meeting.
 
 **Input**: meeting_id
 
@@ -696,38 +744,42 @@ RETURN bookings_created, remaining_need
    - Find matching time slot: SELECT slot WHERE date = meeting.date AND start_time <= meeting.start_time AND end_time >= meeting.end_time
    - IF no matching slot exists: CREATE slot that encompasses meeting times
 
-2. **Option A: Use Existing Bookings**
-   - Find bookings at this slot that have free capacity:
+2. **Option A: Use Free Booked Positions**
+   - Find positions in this slot that are free during the meeting:
      ```sql
-     SELECT b.* FROM bookings b
+     SELECT p.* FROM booking_positions p
+     JOIN bookings b ON p.booking_id = b.booking_id
+     JOIN interpreters i ON b.interpreter_id = i.interpreter_id
      WHERE b.slot_id = :slot_id
-       AND b.status = CONFIRMED
+       AND b.status = 'CONFIRMED'
+       AND p.status = 'ACTIVE'
        AND NOT EXISTS (
          SELECT 1 FROM meeting_assignments ma
          JOIN meetings m ON ma.meeting_id = m.meeting_id
-         WHERE ma.booking_id = b.booking_id
-         AND m.start_time < :meeting_end_time
-         AND m.end_time > :meeting_start_time
+         WHERE ma.position_id = p.position_id
+           AND ma.assignment_status <> 'CANCELLED'
+           AND m.start_time < :meeting_end_time
+           AND m.end_time > :meeting_start_time
        )
+     ORDER BY i.priority_order, p.position_number
      ```
-   - These bookings have no conflicting meeting during the target time
-   - Create assignments linking these bookings to the meeting
-   - If sufficient bookings exist: Done
+   - These interpreters are already booked and have no conflicting meeting at that time
+   - Create one assignment per position needed
+   - If enough free positions exist: Done
 
-3. **Option B: Create New Bookings**
-   - If insufficient existing bookings with free capacity:
+3. **Option B: Book More Interpreters**
+   - If there are not enough free positions:
      - Run Booking Creation Process (5.2) for this slot
      - quantity_needed = meeting.interpreters_needed - current staffing
-     - Create new bookings
-     - Create assignments linking new bookings to meeting
+     - Assign the new positions to the meeting
 
 4. **Validate Staffing**
-   - Staffing = sum of quantity_booked over bookings linked by CONFIRMED assignments
+   - Staffing = number of CONFIRMED assignments for the meeting
    - IF staffing = meeting.interpreters_needed: FULLY_STAFFED
    - IF staffing < meeting.interpreters_needed: UNDERSTAFFED (flag)
    - IF staffing > meeting.interpreters_needed: OVERSTAFFED (warning)
 
-**Output**: Meeting with assignments linking it to bookings, staffing status
+**Output**: Meeting with assignments to positions, staffing status
 
 ---
 
@@ -743,31 +795,31 @@ RETURN bookings_created, remaining_need
    ```sql
    SELECT * FROM meeting_assignments
    WHERE meeting_id = :meeting_id
-     AND assignment_status IN (PROPOSED, CONFIRMED)
+     AND assignment_status IN ('PROPOSED', 'CONFIRMED')
    ```
 
 2. **Cancel Assignments**
    - UPDATE meeting_assignments SET assignment_status = CANCELLED WHERE meeting_id = :meeting_id
    - ADD note: "Meeting [name] cancelled on [date]"
-   - Assignments are removed/cancelled, but bookings remain intact
+   - Positions and bookings remain intact
 
-3. **Evaluate Booking Status**
-   - For each booking that had assignments to this meeting:
-     - Check if booking has OTHER assignments (to different meetings)
-     - IF booking has other meetings: Keep booking CONFIRMED
-     - IF booking has NO other meetings:
-       - Option A: Keep booking CONFIRMED (reserved capacity, available for reassignment)
-       - Option B: Cancel booking (status = CANCELLED, interpreter gets forfait)
+3. **Evaluate Positions and Bookings**
+   - For each position that had an assignment to this meeting:
+     - IF the position has other meetings: nothing changes for that interpreter
+     - IF the position has no other meetings: it is free for the whole block and can be dispatched elsewhere
+   - For each booking whose positions all ended up without meetings:
+     - Option A: Keep booking CONFIRMED (reserved capacity, available for reassignment)
+     - Option B: Cancel booking (status = CANCELLED, interpreters get forfait)
 
 4. **Mark Meeting as Cancelled**
    - UPDATE meetings SET status = CANCELLED (or delete)
    - Retain in audit log
 
 5. **Notify Interpreters**
-   - For bookings with other meetings: "Meeting X cancelled, you still have Meeting Y and Z in same time block"
-   - For bookings with no other meetings: "Meeting X cancelled, you remain booked, will reassign or pay forfait"
+   - Positions with other meetings: "Meeting X cancelled, you still have Meeting Y in the same time block"
+   - Positions without other meetings: "Meeting X cancelled, you remain booked; we will reassign you or pay the forfait"
 
-**Output**: Cancelled assignments, preserved bookings (available for new assignments)
+**Output**: Cancelled assignments, preserved bookings and positions (available for new assignments)
 
 ---
 
@@ -796,7 +848,7 @@ RETURN bookings_created, remaining_need
 
 4. **Create Bookings**
    - For each meeting: run booking creation process
-   - Create meeting assignments linking the bookings to the meetings
+   - Assign the new positions to the meetings
    - Confirm bookings (status: PROPOSED → CONFIRMED)
 
 5. **Notify Interpreters**
@@ -819,20 +871,19 @@ RETURN bookings_created, remaining_need
    - SELECT * FROM availability_declarations WHERE slot_id = X AND quantity_available > 0
    - Interpreters already declared availability for this slot
 
-3. **Check Existing Bookings**
-   - CONFIRMED bookings for this slot whose meeting assignments leave 10:00-13:00 free
+3. **Check Free Positions**
+   - Positions in CONFIRMED bookings for this slot that have no meeting between 10:00 and 13:00
    - These interpreters are already committed for the time block and can take the new meeting
 
 4. **Two Paths**:
    
-   **Path A: Bookings with free time exist**
-   - Reuse: create meeting assignments from those bookings to the new meeting
+   **Path A: Free positions exist**
+   - Assign them to the new meeting
    - Fast: No need to create new bookings
 
-   **Path B: No suitable bookings exist**
-   - Create new bookings from availability
-   - Run priority algorithm
-   - Assign the new bookings to the meeting
+   **Path B: Not enough free positions**
+   - Book more interpreters from availability (priority algorithm), adding positions to existing bureau bookings where possible
+   - Assign the new positions to the meeting
 
 5. **Urgent Notification**
    - Call interpreters (don't wait for email)
@@ -849,10 +900,10 @@ RETURN bookings_created, remaining_need
 
 1. **Initial Setup**
    - Time slot: Monday 9:00-13:00
-   - Booking: Interpreter A, Monday 9-13h, status = CONFIRMED
+   - Booking: Interpreter A, Monday 9-13h, one position, status = CONFIRMED
    - Assignments:
-     - Meeting A (9:00-10:30) → Assignment 1
-     - Meeting B (11:00-12:30) → Assignment 2
+     - Position 1 → Meeting A (9:00-10:30) → Assignment 1
+     - Position 1 → Meeting B (11:00-12:30) → Assignment 2
 
 2. **Friday: Meeting A Cancelled**
    - Cancel Assignment 1: UPDATE meeting_assignments SET assignment_status = CANCELLED WHERE assignment_id = 1
@@ -861,10 +912,10 @@ RETURN bookings_created, remaining_need
    - Interpreter A still working Monday 9-13h (for Meeting B)
 
 3. **Monday: New Urgent Meeting C Scheduled (10:00-11:00)**
-   - Check booking: Interpreter A booked 9-13h
+   - Check position 1: booked 9-13h
    - Check conflicts: Meeting B (11:00-12:30)
    - Time window 10:00-11:00 is FREE (no overlap with Meeting B)
-   - CREATE Assignment 3: Booking → Meeting C
+   - CREATE Assignment 3: Position 1 → Meeting C
    - Assignment 3 status = CONFIRMED
 
 4. **Final State**
@@ -882,24 +933,65 @@ RETURN bookings_created, remaining_need
 
 **Key**: One booking, multiple meetings, flexible reassignment within the time block.
 
+### 6.4 Scenario: Bureau Bucket Dispatched Over Several Meetings
+
+**Context**: A bureau is booked for three interpreters on Monday morning; the three are needed in different places.
+
+**Steps**:
+
+1. **Booking**
+   - Bureau X declared 3 available for Monday 9:00-13:00
+   - Booking: Bureau X, Monday 9-13h, positions 1, 2 and 3, status = CONFIRMED
+
+2. **Meetings and Dispatching**
+   - Meeting A (9:00-10:30) needs 2, Meeting B (9:30-11:00) needs 1, Meeting C (11:00-12:30) needs 3
+   - Position 1 → A, then C
+   - Position 2 → A, then C
+   - Position 3 → B, then C
+   - Check: no position has overlapping meetings (B ends at 11:00 when C starts); positions 1-2 and 3 overlap in time but are different people
+   - A has 2, B has 1, C has 3 → all fully staffed
+
+3. **Names**
+   - Friday: the bureau says who comes
+   - Position 1 = Sophie, position 2 = Marc, position 3 = Lisa
+
+4. **Replacement**
+   - Monday 7:30: Marc is ill, the bureau sends Thomas
+   - Position 2: interpreter_name Marc → Thomas, note "replaces Marc (ill)"
+   - Position 2's assignments to A and C are unchanged
+
+5. **Cancellation**
+   - Meeting B is cancelled
+   - Position 3's assignment to B is cancelled; position 3 keeps C and is free 9:00-11:00
+   - Urgent Meeting D (10:00-10:45) → position 3
+
+6. **Actual Hours**
+   - Meeting C runs late, until 13:30
+   - Sophie and Thomas stay until 13:30; Lisa leaves at 12:30
+   - Recorded per position: Sophie 9:00-13:30, Thomas 9:00-13:30, Lisa 10:00-12:30
+
+**Key**: One commitment to the bureau, three people dispatched independently, with names, replacements and hours kept per person for the overview to HR.
+
 ---
 
 ## 7. Success Criteria
 
 ### 7.1 Conceptual Clarity
 - Team understands distinction: AVAILABILITY (can work) ≠ BOOKING (will work) ≠ MEETING (event)
+- A bureau booking is a bucket of positions; each position is one interpreter, dispatched on its own
 - Workflows respect these separate lifecycles
 - System design reflects these as independent entities
 
 ### 7.2 Operational Flexibility
 - Can collect availability before meetings confirmed
-- Can reassign bookings when meetings cancel
+- Can reassign booked interpreters when meetings cancel
+- Can spread the interpreters of one bureau booking over different meetings
 - Can handle three concurrent scheduling cycles (quarterly, weekly, emergency)
 - Interpreter commitments honored even when meetings change
 
 ### 7.3 Legal Compliance
 - Priority order enforced in booking creation
-- Complete audit trail: availability → booking → meeting assignment
+- Complete audit trail: availability → booking → position → meeting assignment
 - Documentation for all priority overrides
 
 ### 7.4 Efficiency Gains
@@ -911,23 +1003,25 @@ RETURN bookings_created, remaining_need
 
 ## 8. Conclusion
 
-The core insight of this system is the separation of three distinct concepts with a many-to-many relationship:
+The core insight of this system is the separation of distinct concepts:
 
 1. **AVAILABILITY**: Interpreter capacity declaration for time blocks
-2. **BOOKING**: Reservation of interpreter time for a time block (commitment)
-3. **MEETING**: Specific event consuming booked capacity
-4. **MEETING ASSIGNMENT**: Junction linking bookings to meetings (many-to-many)
+2. **BOOKING**: Commitment to a supplier for a time block - one interpreter, or a bucket of N for a bureau
+3. **BOOKING POSITION**: One interpreter within a booking, with the name of the person sent and the actual hours
+4. **MEETING**: Specific event consuming booked capacity
+5. **MEETING ASSIGNMENT**: Puts one position on one meeting
 
-**The Critical Many-to-Many Relationship**:
-- ONE booking (e.g., Monday 9-13h) can serve MULTIPLE meetings (9-10:30h, 11-12h)
-- ONE meeting can have MULTIPLE bookings (multiple interpreters assigned)
-- This enables maximum flexibility for reassignment when meetings cancel or change
+**The Relationships**:
+- ONE booking has ONE or MORE positions
+- ONE position (e.g., Monday 9-13h) can serve MULTIPLE non-overlapping meetings
+- ONE meeting has MULTIPLE positions (one per interpreter needed), from one or several bookings
 
 This separation enables:
 - Collecting availability before meetings are fully defined
 - Maintaining interpreter commitments when individual meetings cancel
+- Dispatching each interpreter of a bureau booking independently
 - Flexible reassignment of booked capacity within the same time block
-- Accurate tracking of what was promised vs. what was delivered
+- Accurate tracking of what was promised vs. what was delivered, per person
 - Efficient use of booked time (fill empty slots with new meetings)
 
-The system enforces legal priority obligations while providing operational flexibility to handle the reality of parliamentary/governmental scheduling where meetings are planned in multiple overlapping cycles and details frequently change within booked time blocks.
+The system enforces legal priority obligations while providing operational flexibility to handle the reality of parliamentary scheduling, where meetings are planned in multiple overlapping cycles and details frequently change within booked time blocks.

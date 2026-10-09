@@ -3,7 +3,7 @@
 > **Note:** this plan was written before the functional analysis. Where they differ,
 > [functional-analysis.md](functional-analysis.md) is authoritative - in particular the data
 > model, which replaces the single `assignments` table below with time slots, availability
-> declarations, bookings and meeting assignments. pandas is not used; the standard `csv`
+> declarations, bookings, booking positions and meeting assignments. pandas is not used; the standard `csv`
 > module is enough for the Google Forms exports and keeps Python 3.8 support.
 
 ## System Architecture
