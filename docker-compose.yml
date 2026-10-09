@@ -1,0 +1,54 @@
+# Test server on the infracriv platform: the application plus its own MySQL 8.0.40.
+# Caddy reaches the application as matcher:8000 over the shared "infracriv" network;
+# the database is only on the internal network of this project.
+name: matcher
+
+services:
+  matcher:
+    image: ghcr.io/bvelsac/matcher:latest
+    build: .
+    restart: unless-stopped
+    environment:
+      TZ: Europe/Brussels
+      APP_CONFIG: production
+      SECRET_KEY: ${SECRET_KEY:?Set SECRET_KEY in .env}
+      MYSQL_HOST: matcher-db
+      MYSQL_PORT: "3306"
+      MYSQL_DATABASE: ${MYSQL_DATABASE:-interpreter_system}
+      MYSQL_USER: ${MYSQL_USER:-interpreter_user}
+      MYSQL_PASSWORD: ${MYSQL_PASSWORD:?Set MYSQL_PASSWORD in .env}
+    depends_on:
+      matcher-db:
+        condition: service_healthy
+    networks: [infracriv, database]
+
+  matcher-db:
+    image: mysql:8.0.40
+    restart: unless-stopped
+    command: ["--character-set-server=utf8mb4", "--collation-server=utf8mb4_unicode_ci"]
+    environment:
+      TZ: Europe/Brussels
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD:?Set MYSQL_ROOT_PASSWORD in .env}
+      MYSQL_DATABASE: ${MYSQL_DATABASE:-interpreter_system}
+      MYSQL_USER: ${MYSQL_USER:-interpreter_user}
+      MYSQL_PASSWORD: ${MYSQL_PASSWORD:?Set MYSQL_PASSWORD in .env}
+    volumes:
+      - matcher_db:/var/lib/mysql
+    healthcheck:
+      # Over TCP (127.0.0.1), so the check only passes once the real server listens,
+      # not during the image's first-run initialisation.
+      test: ["CMD-SHELL", "mysqladmin ping -h 127.0.0.1 -u root -p\"$$MYSQL_ROOT_PASSWORD\" --silent"]
+      interval: 5s
+      timeout: 5s
+      retries: 30
+      start_period: 30s
+    networks: [database]
+
+networks:
+  infracriv:
+    external: true
+  database: {}
+
+volumes:
+  matcher_db:
+    name: matcher_db
