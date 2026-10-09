@@ -1,0 +1,11 @@
+# Versions pinned for Python 3.8 (the newer Flask 3.1 / Werkzeug 3.1 lines need Python 3.9+).
+Flask==3.0.3
+Werkzeug==3.0.6
+Flask-SQLAlchemy==3.1.1
+SQLAlchemy==2.0.54
+Flask-Login==0.6.3
+Flask-WTF==1.2.1
+# [rsa] installs cryptography, which PyMySQL needs for MySQL 8's default authentication.
+PyMySQL[rsa]==1.1.2
+python-dotenv==1.0.1
+gunicorn==23.0.0

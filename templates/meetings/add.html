@@ -1,0 +1,72 @@
+{% extends "base.html" %}
+
+{% block title %}Add meeting - Interpreter Management{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h1><i class="bi bi-calendar-plus"></i> Add meeting</h1>
+    <a href="{{ url_for('meetings') }}" class="btn btn-secondary"><i class="bi bi-arrow-left"></i> Back to list</a>
+</div>
+
+<div class="row">
+    <div class="col-md-8 mx-auto">
+        <div class="card">
+            <div class="card-header"><h5 class="mb-0"><i class="bi bi-calendar-event"></i> Meeting</h5></div>
+            <div class="card-body">
+                <form method="POST" id="meeting-form">
+                    {% with values = request.form %}{% include "meetings/_fields.html" %}{% endwith %}
+
+                    <div class="d-flex justify-content-between">
+                        <a href="{{ url_for('meetings') }}" class="btn btn-secondary"><i class="bi bi-x-circle"></i> Cancel</a>
+                        <button type="submit" class="btn btn-primary"><i class="bi bi-check-circle"></i> Add meeting</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+
+        <div class="card mt-3">
+            <div class="card-header"><h6 class="mb-0"><i class="bi bi-lightning"></i> Fill in a regular meeting</h6></div>
+            <div class="card-body">
+                <div class="row g-2">
+                    <div class="col-md-6">
+                        <button type="button" class="btn btn-outline-primary w-100" onclick="fillTemplate('uitgebreid')">
+                            Uitgebreid Bureau / Bureau élargi (12:00)
+                        </button>
+                    </div>
+                    <div class="col-md-6">
+                        <button type="button" class="btn btn-outline-primary w-100" onclick="fillTemplate('bureau')">
+                            Bureau (12:15)
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    const dateInput = document.getElementById('date');
+    if (!dateInput.value) {
+        dateInput.value = new Date().toISOString().split('T')[0];
+    }
+
+    dateInput.addEventListener('change', function () {
+        const today = new Date().toISOString().split('T')[0];
+        this.setCustomValidity(this.value < today ? 'The meeting date cannot be in the past.' : '');
+        this.reportValidity();
+    });
+
+    function fillTemplate(type) {
+        const presets = {
+            uitgebreid: { name: 'Uitgebreid Bureau / Bureau élargi', time: '12:00' },
+            bureau: { name: 'Bureau', time: '12:15' }
+        };
+        const preset = presets[type];
+        document.getElementById('name').value = preset.name;
+        document.getElementById('time').value = preset.time;
+        document.getElementById('category').value = 'parliament';
+    }
+</script>
+{% endblock %}

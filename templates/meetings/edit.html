@@ -1,0 +1,68 @@
+{% extends "base.html" %}
+
+{% block title %}Edit meeting - Interpreter Management{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h1><i class="bi bi-pencil"></i> Edit meeting</h1>
+    <a href="{{ url_for('meetings') }}" class="btn btn-secondary"><i class="bi bi-arrow-left"></i> Back to list</a>
+</div>
+
+<div class="row">
+    <div class="col-md-8 mx-auto">
+        <div class="card">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <h5 class="mb-0"><i class="bi bi-calendar-event"></i> Meeting</h5>
+                <span class="badge bg-secondary">{{ meeting.category_display }}</span>
+            </div>
+            <div class="card-body">
+                <form method="POST">
+                    {% with values = meeting %}{% include "meetings/_fields.html" %}{% endwith %}
+
+                    <div class="d-flex justify-content-between">
+                        <div>
+                            <a href="{{ url_for('meetings') }}" class="btn btn-secondary"><i class="bi bi-x-circle"></i> Cancel</a>
+                            <button type="button" class="btn btn-outline-danger"
+                                    data-url="{{ url_for('delete_meeting', id=meeting.id) }}"
+                                    data-name="{{ meeting.name }}"
+                                    onclick="deleteMeeting(this)">
+                                <i class="bi bi-trash"></i> Delete
+                            </button>
+                        </div>
+                        <button type="submit" class="btn btn-primary"><i class="bi bi-check-circle"></i> Save</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+
+        <div class="card mt-3">
+            <div class="card-body">
+                <div class="row small">
+                    <div class="col-md-6">
+                        <p class="mb-1"><strong>Created:</strong> {{ meeting.created_at.strftime('%Y-%m-%d %H:%M') }} by {{ meeting.creator.username }}</p>
+                        <p class="mb-1"><strong>Last updated:</strong> {{ meeting.updated_at.strftime('%Y-%m-%d %H:%M') }}</p>
+                    </div>
+                    <div class="col-md-6">
+                        <p class="mb-1"><strong>Interpreter hours (estimate):</strong> {{ meeting.estimated_duration * meeting.interpreters_needed }}</p>
+                        <p class="mb-1"><strong>Status:</strong>
+                            {% if meeting.date < today %}<span class="badge bg-secondary">Past</span>
+                            {% elif meeting.date == today %}<span class="badge bg-warning text-dark">Today</span>
+                            {% else %}<span class="badge bg-success">Upcoming</span>{% endif %}
+                        </p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    function deleteMeeting(button) {
+        if (confirmDelete(`Delete meeting "${button.dataset.name}"? This cannot be undone.`)) {
+            postForm(button.dataset.url);
+        }
+    }
+</script>
+{% endblock %}

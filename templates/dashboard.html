@@ -1,0 +1,141 @@
+{% extends "base.html" %}
+
+{% block title %}Dashboard - Interpreter Management{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h1><i class="bi bi-house"></i> Dashboard</h1>
+    <div class="text-muted"><i class="bi bi-calendar3"></i> {{ today.strftime('%A %d %B %Y') }}</div>
+</div>
+
+<div class="row mb-4">
+    <div class="col-md-4">
+        <div class="card bg-primary text-white">
+            <div class="card-body d-flex justify-content-between">
+                <div>
+                    <h5 class="card-title">Interpreters</h5>
+                    <h2 class="mb-0">{{ total_interpreters }}</h2>
+                </div>
+                <i class="bi bi-people align-self-center" style="font-size: 2rem;"></i>
+            </div>
+            <div class="card-footer">
+                <a href="{{ url_for('interpreters') }}" class="text-white text-decoration-none">
+                    <i class="bi bi-arrow-right"></i> Manage interpreters
+                </a>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-4">
+        <div class="card bg-success text-white">
+            <div class="card-body d-flex justify-content-between">
+                <div>
+                    <h5 class="card-title">Upcoming meetings</h5>
+                    <h2 class="mb-0">{{ upcoming_meetings }}</h2>
+                </div>
+                <i class="bi bi-calendar-event align-self-center" style="font-size: 2rem;"></i>
+            </div>
+            <div class="card-footer">
+                <a href="{{ url_for('meetings') }}" class="text-white text-decoration-none">
+                    <i class="bi bi-arrow-right"></i> Manage meetings
+                </a>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-4">
+        <div class="card bg-info text-white">
+            <div class="card-body d-flex justify-content-between">
+                <div>
+                    <h5 class="card-title">Your access</h5>
+                    <p class="mb-0">{{ current_user.role.title() }}</p>
+                </div>
+                <i class="bi bi-gear align-self-center" style="font-size: 2rem;"></i>
+            </div>
+            <div class="card-footer">
+                {% if current_user.is_editor %}
+                <i class="bi bi-check-circle"></i> Can change data
+                {% else %}
+                <i class="bi bi-eye"></i> View only
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+
+{% if current_user.is_editor %}
+<div class="card mb-4">
+    <div class="card-header"><h5 class="mb-0"><i class="bi bi-lightning"></i> Quick actions</h5></div>
+    <div class="card-body">
+        <div class="row g-2">
+            <div class="col-md-3">
+                <a href="{{ url_for('add_interpreter') }}" class="btn btn-outline-primary w-100">
+                    <i class="bi bi-person-plus"></i><br>Add interpreter
+                </a>
+            </div>
+            <div class="col-md-3">
+                <a href="{{ url_for('add_meeting') }}" class="btn btn-outline-success w-100">
+                    <i class="bi bi-calendar-plus"></i><br>Add meeting
+                </a>
+            </div>
+            <div class="col-md-3">
+                <button class="btn btn-outline-secondary w-100" disabled>
+                    <i class="bi bi-file-earmark-arrow-down"></i><br>Import availabilities (phase 2)
+                </button>
+            </div>
+            <div class="col-md-3">
+                <button class="btn btn-outline-secondary w-100" disabled>
+                    <i class="bi bi-diagram-3"></i><br>Bookings (phase 2-3)
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+{% endif %}
+
+<div class="card">
+    <div class="card-header d-flex justify-content-between align-items-center">
+        <h5 class="mb-0"><i class="bi bi-calendar3"></i> Next meetings</h5>
+        <a href="{{ url_for('meetings') }}" class="btn btn-sm btn-outline-primary">View all</a>
+    </div>
+    <div class="card-body">
+        {% if next_meetings %}
+        <div class="table-responsive">
+            <table class="table table-hover">
+                <thead>
+                    <tr>
+                        <th>Meeting</th>
+                        <th>Date &amp; time</th>
+                        <th>Category</th>
+                        <th>Location</th>
+                        <th>Interpreters</th>
+                        <th>Duration</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for meeting in next_meetings %}
+                    <tr>
+                        <td><strong>{{ meeting.name }}</strong></td>
+                        <td>
+                            {{ meeting.date.strftime('%Y-%m-%d') }}<br>
+                            <small class="text-muted"><i class="bi bi-clock"></i> {{ meeting.time.strftime('%H:%M') }}</small>
+                        </td>
+                        <td><span class="badge bg-secondary">{{ meeting.category_display }}</span></td>
+                        <td>{{ meeting.location }}</td>
+                        <td><span class="badge bg-primary">{{ meeting.interpreters_needed }}</span></td>
+                        <td>{{ meeting.estimated_duration }}h</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        {% else %}
+        <div class="text-center text-muted py-4">
+            <i class="bi bi-calendar-x" style="font-size: 3rem;"></i>
+            <p class="mt-2">No upcoming meetings.</p>
+            {% if current_user.is_editor %}
+            <a href="{{ url_for('add_meeting') }}" class="btn btn-primary"><i class="bi bi-calendar-plus"></i> Add meeting</a>
+            {% endif %}
+        </div>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}
