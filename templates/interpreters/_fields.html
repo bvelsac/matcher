@@ -1,0 +1,55 @@
+{# Shared interpreter form fields. Expects `values`: the interpreter being edited, or request.form when adding. #}
+<input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+<div class="row">
+    <div class="col-md-6 mb-3">
+        <label for="first_name" class="form-label">First name *</label>
+        <input type="text" class="form-control" id="first_name" name="first_name" value="{{ values.first_name or '' }}" required>
+    </div>
+    <div class="col-md-6 mb-3">
+        <label for="last_name" class="form-label">Last name *</label>
+        <input type="text" class="form-control" id="last_name" name="last_name" value="{{ values.last_name or '' }}" required>
+    </div>
+</div>
+
+<div class="row">
+    <div class="col-md-6 mb-3">
+        <label for="email" class="form-label">Email address *</label>
+        <div class="input-group">
+            <span class="input-group-text"><i class="bi bi-envelope"></i></span>
+            <input type="email" class="form-control" id="email" name="email" value="{{ values.email or '' }}" required>
+        </div>
+        <div class="form-text">Must be the address used in the Google Forms responses.</div>
+    </div>
+    <div class="col-md-6 mb-3">
+        <label for="phone" class="form-label">Phone number</label>
+        <div class="input-group">
+            <span class="input-group-text"><i class="bi bi-telephone"></i></span>
+            <input type="tel" class="form-control" id="phone" name="phone" value="{{ values.phone or '' }}">
+        </div>
+    </div>
+</div>
+
+<div class="mb-3">
+    <label for="bureau_affiliation" class="form-label">Bureau</label>
+    <div class="input-group">
+        <span class="input-group-text"><i class="bi bi-building"></i></span>
+        <input type="text" class="form-control" id="bureau_affiliation" name="bureau_affiliation"
+               value="{{ values.bureau_affiliation or '' }}" placeholder="Leave empty for an individual interpreter">
+    </div>
+    <div class="form-text">For a bureau, the priority applies to every interpreter the bureau sends.</div>
+</div>
+
+<div class="mb-3">
+    <label for="additional_languages" class="form-label">Additional languages</label>
+    <div class="input-group">
+        <span class="input-group-text"><i class="bi bi-translate"></i></span>
+        <input type="text" class="form-control" id="additional_languages" name="additional_languages"
+               value="{{ values.additional_languages or '' }}" placeholder="e.g. English, German">
+    </div>
+    <div class="form-text">Languages beyond Dutch and French, comma separated.</div>
+</div>
+
+<div class="mb-3">
+    <label for="notes" class="form-label">Notes</label>
+    <textarea class="form-control" id="notes" name="notes" rows="3">{{ values.notes or '' }}</textarea>
+</div>

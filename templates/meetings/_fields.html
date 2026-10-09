@@ -1,0 +1,59 @@
+{# Shared meeting form fields. Expects `values`: the meeting being edited, or request.form when adding. #}
+<input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+<div class="mb-3">
+    <label for="name" class="form-label">Meeting name *</label>
+    <input type="text" class="form-control" id="name" name="name" value="{{ values.name or '' }}" required>
+</div>
+
+{% set date_value = values.date.strftime('%Y-%m-%d') if values.date is defined and values.date and values.date is not string else (values.date or '') %}
+{% set time_value = values.time.strftime('%H:%M') if values.time is defined and values.time and values.time is not string else (values.time or '') %}
+<div class="row">
+    <div class="col-md-6 mb-3">
+        <label for="date" class="form-label">Date *</label>
+        <input type="date" class="form-control" id="date" name="date" value="{{ date_value }}" required>
+    </div>
+    <div class="col-md-6 mb-3">
+        <label for="time" class="form-label">Start time *</label>
+        <input type="time" class="form-control" id="time" name="time" value="{{ time_value }}" required>
+    </div>
+</div>
+
+<div class="row">
+    <div class="col-md-6 mb-3">
+        <label for="estimated_duration" class="form-label">Estimated duration *</label>
+        <select class="form-select" id="estimated_duration" name="estimated_duration" required>
+            <option value="">Select duration</option>
+            {% for hours in [1, 2, 3, 4, 5, 6, 7, 8] %}
+            <option value="{{ hours }}" {% if values.estimated_duration|string == hours|string %}selected{% endif %}>
+                {{ hours }} hour{{ 's' if hours > 1 }}
+            </option>
+            {% endfor %}
+        </select>
+    </div>
+    <div class="col-md-6 mb-3">
+        <label for="interpreters_needed" class="form-label">Interpreters needed *</label>
+        <select class="form-select" id="interpreters_needed" name="interpreters_needed" required>
+            <option value="">Select number</option>
+            {% for n in range(1, 11) %}
+            <option value="{{ n }}" {% if values.interpreters_needed|string == n|string %}selected{% endif %}>
+                {{ n }} interpreter{{ 's' if n > 1 }}
+            </option>
+            {% endfor %}
+        </select>
+    </div>
+</div>
+
+<div class="mb-3">
+    <label for="category" class="form-label">Category *</label>
+    <select class="form-select" id="category" name="category" required>
+        <option value="">Select category</option>
+        {% for key, label in meeting_categories %}
+        <option value="{{ key }}" {% if values.category == key %}selected{% endif %}>{{ label }}</option>
+        {% endfor %}
+    </select>
+</div>
+
+<div class="mb-3">
+    <label for="location" class="form-label">Location *</label>
+    <input type="text" class="form-control" id="location" name="location" value="{{ values.location or '' }}" required>
+</div>

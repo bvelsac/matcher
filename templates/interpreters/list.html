@@ -1,0 +1,176 @@
+{% extends "base.html" %}
+
+{% block title %}Interpreters - Interpreter Management{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h1><i class="bi bi-people"></i> Interpreters</h1>
+    {% if current_user.is_editor %}
+    <a href="{{ url_for('add_interpreter') }}" class="btn btn-primary"><i class="bi bi-person-plus"></i> Add interpreter</a>
+    {% endif %}
+</div>
+
+{% if interpreters %}
+<div class="card">
+    <div class="card-header d-flex justify-content-between align-items-center">
+        <h5 class="mb-0">
+            <i class="bi bi-list-ol"></i> Priority order
+            <span class="badge bg-secondary ms-2">{{ interpreters|length }}</span>
+        </h5>
+        {% if current_user.is_editor %}
+        <button class="btn btn-sm btn-outline-info" id="sort-button" onclick="toggleSortMode()">
+            <i class="bi bi-arrow-down-up"></i> <span id="sort-mode-text">Change order</span>
+        </button>
+        {% endif %}
+    </div>
+    <div class="card-body p-0">
+        <div class="table-responsive">
+            <table class="table table-hover mb-0">
+                <thead class="table-light">
+                    <tr>
+                        <th style="width: 90px;">Priority</th>
+                        <th>Name</th>
+                        <th>Email</th>
+                        <th>Phone</th>
+                        <th>Bureau</th>
+                        <th>Additional languages</th>
+                        {% if current_user.is_editor %}<th style="width: 110px;">Actions</th>{% endif %}
+                    </tr>
+                </thead>
+                <tbody id="interpreters-tbody">
+                    {% for interpreter in interpreters %}
+                    <tr class="interpreter-row" data-interpreter-id="{{ interpreter.id }}">
+                        <td>
+                            <i class="bi bi-grip-vertical text-muted sort-handle" style="display: none; cursor: move;"></i>
+                            <span class="badge bg-primary priority-badge">{{ interpreter.priority_order }}</span>
+                        </td>
+                        <td>
+                            <strong>{{ interpreter.first_name }} {{ interpreter.last_name }}</strong>
+                            {% if interpreter.notes %}
+                            <i class="bi bi-info-circle text-info" title="{{ interpreter.notes }}" data-bs-toggle="tooltip"></i>
+                            {% endif %}
+                        </td>
+                        <td><a href="mailto:{{ interpreter.email }}" class="text-decoration-none">{{ interpreter.email }}</a></td>
+                        <td>
+                            {% if interpreter.phone %}
+                            <a href="tel:{{ interpreter.phone }}" class="text-decoration-none">{{ interpreter.phone }}</a>
+                            {% else %}<span class="text-muted">-</span>{% endif %}
+                        </td>
+                        <td>
+                            {% if interpreter.bureau_affiliation %}
+                            <span class="badge bg-success">{{ interpreter.bureau_affiliation }}</span>
+                            {% else %}<span class="text-muted">Individual</span>{% endif %}
+                        </td>
+                        <td>
+                            {% if interpreter.additional_languages %}<small>{{ interpreter.additional_languages }}</small>
+                            {% else %}<span class="text-muted">-</span>{% endif %}
+                        </td>
+                        {% if current_user.is_editor %}
+                        <td>
+                            <div class="btn-group btn-group-sm">
+                                <a href="{{ url_for('edit_interpreter', id=interpreter.id) }}" class="btn btn-outline-primary" title="Edit">
+                                    <i class="bi bi-pencil"></i>
+                                </a>
+                                <button type="button" class="btn btn-outline-danger" title="Delete"
+                                        data-url="{{ url_for('delete_interpreter', id=interpreter.id) }}"
+                                        data-name="{{ interpreter.full_name }}"
+                                        onclick="deleteInterpreter(this)">
+                                    <i class="bi bi-trash"></i>
+                                </button>
+                            </div>
+                        </td>
+                        {% endif %}
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+<div class="row mt-4">
+    <div class="col-md-4">
+        <div class="card text-center"><div class="card-body">
+            <h6 class="card-title">Total</h6>
+            <h2 class="text-primary">{{ interpreters|length }}</h2>
+        </div></div>
+    </div>
+    <div class="col-md-4">
+        <div class="card text-center"><div class="card-body">
+            <h6 class="card-title">Bureaus</h6>
+            <h2 class="text-success">{{ interpreters|selectattr('bureau_affiliation')|list|length }}</h2>
+        </div></div>
+    </div>
+    <div class="col-md-4">
+        <div class="card text-center"><div class="card-body">
+            <h6 class="card-title">Individuals</h6>
+            <h2 class="text-info">{{ interpreters|rejectattr('bureau_affiliation')|list|length }}</h2>
+        </div></div>
+    </div>
+</div>
+
+{% else %}
+<div class="text-center py-5">
+    <i class="bi bi-people" style="font-size: 4rem; color: #dee2e6;"></i>
+    <h3 class="mt-3 text-muted">No interpreters yet</h3>
+    {% if current_user.is_editor %}
+    <a href="{{ url_for('add_interpreter') }}" class="btn btn-primary"><i class="bi bi-person-plus"></i> Add the first interpreter</a>
+    {% endif %}
+</div>
+{% endif %}
+{% endblock %}
+
+{% block extra_js %}
+<script src="https://cdn.jsdelivr.net/npm/sortablejs@1.15.0/Sortable.min.js"></script>
+<script>
+    let sortable = null;
+
+    document.querySelectorAll('[data-bs-toggle="tooltip"]').forEach(el => new bootstrap.Tooltip(el));
+
+    function toggleSortMode() {
+        const tbody = document.getElementById('interpreters-tbody');
+        const handles = document.querySelectorAll('.sort-handle');
+        if (!sortable) {
+            document.getElementById('sort-mode-text').textContent = 'Save order';
+            handles.forEach(handle => handle.style.display = 'inline');
+            sortable = Sortable.create(tbody, {
+                handle: '.sort-handle',
+                animation: 150,
+                onEnd: updatePriorityNumbers
+            });
+        } else {
+            savePriorityOrder();
+        }
+    }
+
+    function updatePriorityNumbers() {
+        document.querySelectorAll('.interpreter-row').forEach((row, index) => {
+            row.querySelector('.priority-badge').textContent = index + 1;
+        });
+    }
+
+    function savePriorityOrder() {
+        const order = Array.from(document.querySelectorAll('.interpreter-row'))
+            .map(row => parseInt(row.dataset.interpreterId, 10));
+        postJSON('{{ url_for("reorder_interpreters") }}', { order: order })
+            .then(result => {
+                if (result.ok) {
+                    sortable.destroy();
+                    sortable = null;
+                    document.getElementById('sort-mode-text').textContent = 'Change order';
+                    document.querySelectorAll('.sort-handle').forEach(h => h.style.display = 'none');
+                    showAlert('Priority order saved.', 'success');
+                } else {
+                    showAlert(result.data.error || 'The priority order could not be saved.', 'danger');
+                }
+            })
+            .catch(() => showAlert('The priority order could not be saved.', 'danger'));
+    }
+
+    function deleteInterpreter(button) {
+        if (confirmDelete(`Delete interpreter "${button.dataset.name}"? The priority order will be renumbered.`)) {
+            postForm(button.dataset.url);
+        }
+    }
+</script>
+{% endblock %}
