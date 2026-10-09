@@ -369,8 +369,8 @@ POSITION 3 ── assignment ──→ MEETING B (9:30-11:00)
 
 **Scenario 1: Meeting cancellation within booked block**
 - Monday 9:00-13:00 time slot
-- Bureau Tradho declared available (qty: 3)
-- Booking created: Tradho, Monday 9-13h, 3 positions, status: CONFIRMED
+- Bureau DTITD declared available (qty: 3)
+- Booking created: DTITD, Monday 9-13h, 3 positions, status: CONFIRMED
 - Assignments:
   - Positions 1 and 2 → Meeting A (9:00-10:30, needs 2)
   - Position 3 → Meeting B (11:00-12:30, needs 1)
