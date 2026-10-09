@@ -1030,3 +1030,20 @@ This separation enables:
 - Efficient use of booked time (fill empty slots with new meetings)
 
 The system enforces legal priority obligations while providing operational flexibility to handle the reality of parliamentary scheduling, where meetings are planned in multiple overlapping cycles and details frequently change within booked time blocks.
+
+---
+
+## 9. Open Points
+
+Not yet covered by this analysis:
+
+1. **Confirmations**: the text per interpreter for a chosen period (default: a week starting Monday). Only mentioned in passing in scenario 6.1.
+2. **Weekly overview for HR and monthly overview of prestations per interpreter**: referred to, not defined.
+3. **Users, roles and the editing lock**: editor and viewer roles, and locking the system while one person dispatches. Implemented in Phase 1, not described here.
+4. **Interpreter portal**: interpreters enter their own start and end times; the team lead validates them. Positions hold the times, but the entry and validation step is missing.
+5. **Real duration of the meeting itself**: keep the initial estimate and record the real length of the meeting. Only the individual interpreters' hours are covered.
+6. **Interpreter becomes unavailable**: suggest the next interpreter in the priority list and record the communicated change. Only covered implicitly.
+7. **Booking someone who did not respond to the form** (from the overall list): allowed, but not stated as a rule.
+8. **BR-SRC-003** says "no overlap constraint", which contradicts the rule that the same meeting in two forms is a logical error and must be flagged.
+9. **Meeting fields**: this analysis uses a start and end time; the original brief and the Phase 1 code use a start time plus an estimated duration. To be decided which one applies.
+10. **Section 7.4**: the figures "8-10 hours per cycle" and "10-15% errors" are assumptions, not measured values. To be removed or replaced with real figures.
