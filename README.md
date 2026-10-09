@@ -105,6 +105,42 @@ python manage.py sample-data         # fictitious interpreters and meetings
 python app.py                        # http://127.0.0.1:5000
 ```
 
+## Test server on the infracriv platform (Docker)
+
+`docker-compose.yml` runs the application with its own MySQL 8.0.40 container, on the same
+Python 3.8 as production. The application joins the shared `infracriv` network, so Caddy
+can put it behind the Authelia login like the other applications.
+
+On the server:
+
+```bash
+git clone https://github.com/bvelsac/matcher.git
+cd matcher
+cp .env.example .env      # fill in SECRET_KEY, MYSQL_PASSWORD and MYSQL_ROOT_PASSWORD
+docker compose up -d --build
+docker compose exec matcher python manage.py create-user
+docker compose exec matcher python manage.py sample-data     # optional, fictitious data
+```
+
+The first start takes a minute: MySQL initialises its data directory, then the application
+creates its tables. `docker compose logs -f matcher` shows progress.
+
+Route in `CAL/caddy/Caddyfile` of the infracriv repository, followed by a Caddy reload:
+
+```
+matcher.infracriv.net {
+	import beveiligd
+	reverse_proxy matcher:8000
+}
+```
+
+The subdomain also needs a DNS record at Cloudflare, like the other subdomains.
+
+Users first pass the Authelia login and then log in to matcher with the account made by
+`create-user`.
+
+To update: `git pull` and `docker compose up -d --build`. The data stays in the `matcher_db` volume.
+
 ## Tests
 
 ```bash
