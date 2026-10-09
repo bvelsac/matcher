@@ -535,6 +535,11 @@ RETURN positions_created, remaining_need
 - System MUST require documented reason in booking.notes
 - Audit trail shows: algorithm suggestion vs. actual booking
 
+**BR-BOOK-006: Priority Applies to Booking, Not to Dispatching**
+- An interpreter is always booked before being assigned to a meeting
+- The priority order governs who gets a booking
+- Positions that are already booked are dispatched to meetings without applying the priority order again: free booked positions are used before any new booking is made (5.3, option A)
+
 ### 4.2 Booking Validation Rules
 
 **BR-VAL-001: No Double-Booking**
