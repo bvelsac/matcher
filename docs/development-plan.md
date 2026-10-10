@@ -143,9 +143,9 @@ open point 14).
   - Customizable date ranges (default: weekly from Monday)
 - Weekly overview for HR
 - Monthly overview per interpreter
-- Invoices: per position, whether the supplier's invoice has come in and its reference; one
-  invoice recorded on several positions at once; work list "invoice not received yet"
-  (functional analysis 2.5)
+- Invoices and Dimona: an invoice (reference, date received, period) recorded once and linked
+  to all positions it covers; Dimona declared per position; work lists "invoice not received
+  yet" and "Dimona to declare" (functional analysis 2.5, 2.9)
 
 **Deliverable**: Complete scheduling and reporting system
 

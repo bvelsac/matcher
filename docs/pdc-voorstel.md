@@ -117,17 +117,23 @@ bijwerking haar beurt over.
 `rooms`: kopie van de vaste lijst zalen van spic (`code`, `description`, `active`). `user_visits`: per gebruiker het
 tijdstip van het laatste bezoek, voor "gewijzigd sinds je laatste bezoek".
 
-### Facturen (nieuw gegeven, 10 oktober 2026)
+### Facturen en Dimona (nieuw gegeven, 10 oktober 2026)
 
-De spreadsheet van de tolkenplanner houdt ook bij of de factuur voor een prestatie al binnen is, en met welke referentie.
-In de FA staan daarom twee velden op de boekingspositie (§2.5, BR-POS-008): `invoice_received_on` (datum, leeg = nog
-niet binnen) en `invoice_reference`. Eén factuur dekt vaak meer posities (een bureau factureert een boeking of een
-maand), dus de planner kan één factuur in één keer op meer posities noteren; een werklijst "factuur nog niet binnen"
-toont de afgewerkte posities zonder factuur. Elke wijziging komt in het logboek (actie `invoice_recorded`).
+De spreadsheet van de tolkenplanner (`TOLKENPLANNING_2026-2027.xlsx`) houdt per prestatie in de kolom "FACT. of DIM"
+bij of de factuur binnen is (met het factuurnummer, of alleen "ok"), of dat de tolk via Dimona werkt ("DIM", "DIM / ok").
+Een bureau factureert per maand voor al zijn tolken. Daarom in de FA:
 
-De spreadsheet zelf is in deze sessie niet aangekomen. Als ze er is: de kolommen vergelijken met het model (wat
-ontbreekt er nog, op welk niveau staat een rij: per tolk per vergadering, per dag of per boeking). Ze bevat echte
-persoonsgegevens en komt dus nooit in de repository; alleen de kolomnamen en de structuur worden beschreven.
+- een tabel `invoices` (FA §2.9): wie factureert, referentie, datum van ontvangst, periode, notities. Een positie
+  verwijst naar haar factuur (`booking_positions.invoice_id`); de planner noteert een factuur één keer en koppelt in één
+  handeling alle posities die ze dekt;
+- per tolk een standaard `engagement` (`invoice` of `dimona`), per positie aan te passen, en per positie
+  `dimona_declared`;
+- op de boeking `forfait_hours` ("forfait 3u"); op de toewijzing `cancellation_communicated_on` ("annulation transmise");
+- twee werklijsten: "factuur nog niet binnen" en "Dimona aan te geven".
+
+Elke koppeling, wijziging en ontkoppeling komt in het logboek (actie `invoice_linked`, `invoice_unlinked`,
+`dimona_declared`). De spreadsheet bevat echte persoonsgegevens en komt nooit in de repository; alleen de structuur is
+beschreven (FA §9 punt 17, met de vragen die nog openstaan).
 
 ### Keuzes in dit ontwerp
 
