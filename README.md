@@ -79,6 +79,14 @@ python app.py                        # http://127.0.0.1:5000
 In development PDC does not need Authelia: `PDC_AUTH_MODE=dev` (the default there) signs
 everyone in as `PDC_DEV_USER`.
 
+### Trial in GitHub Codespaces
+
+On GitHub: **Code → Codespaces → Create codespace** on this branch. `.devcontainer/` installs PDC,
+adds fictitious sample data and starts it in development mode; the browser opens on port 5000
+(otherwise: the **Ports** tab, port 5000). Everyone is signed in as the editor "developer", so
+keep the port private (the default) and never put real data in a codespace. The log is in
+`/tmp/pdc.log`; to restart: `flask --app app run --host 0.0.0.0 --port 5000`.
+
 ## Configuration
 
 ```bash
