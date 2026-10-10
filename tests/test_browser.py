@@ -133,3 +133,28 @@ def test_meeting_list_badges_are_readable(app, page, server):
     assert badges
     for badge in badges:
         assert badge.evaluate(CONTRAST_JS) >= 4.5
+
+
+@pytest.mark.parametrize("path, background, accent", [
+    ("/", "bg-dashboard.png", "rgb(254, 219, 149)"),
+    ("/interpreters", "bg-interpreters.png", "rgb(251, 180, 194)"),
+    ("/interpreters/add", "bg-interpreter-form.png", "rgb(251, 180, 194)"),
+    ("/meetings", "bg-meetings.png", "rgb(207, 161, 238)"),
+    ("/meetings/add", "bg-meeting-form.png", "rgb(207, 161, 238)"),
+    ("/does-not-exist", "bg-error.png", "rgb(254, 198, 184)"),
+])
+def test_each_screen_has_its_own_background_and_accent(page, server, path, background, accent):
+    log_in(page, server)
+    page.goto(server + path)
+
+    image = page.evaluate("() => getComputedStyle(document.body, '::before').backgroundImage")
+    assert "img/" + background in image
+    assert page.request.get(server + "/static/img/" + background).status == 200
+    # The icon of the page title (or of the error) carries the accent colour of the screen.
+    icon = page.query_selector("h1 .bi, .error-icon")
+    assert icon.evaluate("(el) => getComputedStyle(el).color") == accent
+
+    active = page.query_selector(".sidebar .nav-link.active")
+    if active:  # the error pages have no active menu item
+        assert active.evaluate("(el) => getComputedStyle(el).backgroundColor") == accent
+        assert active.evaluate(CONTRAST_JS) >= 4.5

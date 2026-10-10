@@ -17,6 +17,10 @@
     --pdc-lavender: #cfa1ee;
     --pdc-peach: #eec19a;
     --pdc-coral: #f2907e;
+    /* Accent tints, also from the images: one per screen (see "Screens" below) */
+    --pdc-gold: #fedb95;
+    --pdc-rose: #fbb4c2;
+    --pdc-salmon: #fec6b8;
     --pdc-surface: rgba(12, 0, 7, 0.9);
 
     --bs-body-font-family: Arial, Helvetica, sans-serif;
@@ -83,11 +87,15 @@
 }
 
 /* ---------------------------------------------------------------------------
- * Page background: the eye, in coarse pixels and faded, with loose grain on top
+ * Page background: a part of the reference images in coarse pixels, faded, with loose
+ * grain on top. Each screen has its own part and its own accent tint.
  * ------------------------------------------------------------------------- */
 
 body {
-    --pdc-eye-opacity: 0.2;
+    --pdc-bg: url("../img/eye.png");
+    --pdc-bg-position: 60% 40%;
+    --pdc-bg-opacity: 0.2;
+    --pdc-accent: var(--pdc-pink);
     font-family: var(--bs-body-font-family);
     color: var(--bs-body-color);
     background-color: var(--pdc-black);
@@ -104,8 +112,11 @@ body::after {
 
 body::before {
     z-index: -2;
-    background: url("../img/eye.png") 60% 40% / cover no-repeat;
-    opacity: var(--pdc-eye-opacity);
+    background-image: var(--pdc-bg);
+    background-position: var(--pdc-bg-position);
+    background-size: cover;
+    background-repeat: no-repeat;
+    opacity: var(--pdc-bg-opacity);
     filter: saturate(0.7);
 }
 
@@ -115,8 +126,52 @@ body::after {
     opacity: 0.25;
 }
 
-body.page-login {
-    --pdc-eye-opacity: 0.55;
+/* Screens: background part and accent tint */
+body.screen-login {
+    --pdc-bg-opacity: 0.55;
+}
+
+body.screen-dashboard {
+    --pdc-bg: url("../img/bg-dashboard.png");
+    --pdc-bg-position: 50% 50%;
+    --pdc-accent: var(--pdc-gold);
+}
+
+body.screen-interpreters,
+body.screen-interpreter-form {
+    --pdc-accent: var(--pdc-rose);
+}
+
+body.screen-interpreters {
+    --pdc-bg: url("../img/bg-interpreters.png");
+    --pdc-bg-position: 50% 60%;
+}
+
+body.screen-interpreter-form {
+    --pdc-bg: url("../img/bg-interpreter-form.png");
+    --pdc-bg-position: 40% 50%;
+}
+
+body.screen-meetings,
+body.screen-meeting-form {
+    --pdc-accent: var(--pdc-lavender);
+}
+
+body.screen-meetings {
+    --pdc-bg: url("../img/bg-meetings.png");
+    --pdc-bg-position: 40% 50%;
+}
+
+body.screen-meeting-form {
+    --pdc-bg: url("../img/bg-meeting-form.png");
+    --pdc-bg-position: 60% 50%;
+}
+
+body.screen-error {
+    --pdc-bg: url("../img/bg-error.png");
+    --pdc-bg-position: 50% 70%;
+    --pdc-bg-opacity: 0.3;
+    --pdc-accent: var(--pdc-salmon);
 }
 
 h1, .h1 {
@@ -126,7 +181,11 @@ h1, .h1 {
     letter-spacing: 0.04em;
 }
 
-h1 .bi, .card-header .bi {
+h1 .bi {
+    color: var(--pdc-accent);
+}
+
+.card-header .bi {
     color: var(--pdc-pink-muted);
 }
 
@@ -152,10 +211,10 @@ h1 .bi, .card-header .bi {
     position: relative;
     z-index: 2;
     background-color: var(--pdc-black);
-    border-bottom: 2px solid var(--pdc-pink);
+    border-bottom: 2px solid var(--pdc-accent);
 }
 
-/* Pixels that thin out below the navbar */
+/* Pixels that thin out below the navbar, in the accent colour of the screen */
 .pdc-navbar::after {
     content: "";
     position: absolute;
@@ -163,8 +222,9 @@ h1 .bi, .card-header .bi {
     left: 0;
     right: 0;
     height: 12px;
-    background: url("../img/edge.png") 0 0 / 256px 12px repeat-x;
-    image-rendering: pixelated;
+    background-color: var(--pdc-accent);
+    -webkit-mask: url("../img/edge.png") 0 0 / 256px 12px repeat-x;
+    mask: url("../img/edge.png") 0 0 / 256px 12px repeat-x;
     pointer-events: none;
 }
 
@@ -214,7 +274,7 @@ h1 .bi, .card-header .bi {
     --bs-nav-link-hover-color: var(--pdc-pink);
     --bs-nav-link-disabled-color: var(--pdc-pink-muted);
     --bs-nav-pills-link-active-color: var(--pdc-black);
-    --bs-nav-pills-link-active-bg: var(--pdc-pink);
+    --bs-nav-pills-link-active-bg: var(--pdc-accent);
 }
 
 .nav-pills .nav-link:not(.active):not(.disabled):hover {
@@ -264,6 +324,7 @@ h1 .bi, .card-header .bi {
         var(--pdc-aubergine);
     image-rendering: pixelated;
     border-bottom: 1px solid var(--pdc-violet);
+    box-shadow: inset 4px 0 0 var(--pdc-accent);
 }
 
 .card-header h5,
@@ -282,7 +343,6 @@ h1 .bi, .card-header .bi {
 
 /* Key figures: a coloured bar on top, the number in that colour */
 .stat-card {
-    --pdc-accent: var(--pdc-pink);
     border-top: 4px solid var(--pdc-accent);
 }
 
@@ -296,6 +356,8 @@ h1 .bi, .card-header .bi {
 }
 
 .stat-card.accent-lavender { --pdc-accent: var(--pdc-lavender); }
+.stat-card.accent-gold { --pdc-accent: var(--pdc-gold); }
+.stat-card.accent-rose { --pdc-accent: var(--pdc-rose); }
 .stat-card.accent-muted { --pdc-accent: var(--pdc-pink-muted); }
 .stat-card.accent-peach { --pdc-accent: var(--pdc-peach); }
 
@@ -432,7 +494,7 @@ h1 .bi, .card-header .bi {
     text-transform: uppercase;
     letter-spacing: 0.08em;
     color: var(--pdc-pink-muted);
-    border-bottom: 2px solid var(--pdc-violet);
+    border-bottom: 2px solid var(--pdc-accent);
 }
 
 .table-light {
@@ -528,4 +590,5 @@ input[type="time"] {
 
 .error-icon {
     font-size: 5rem;
+    color: var(--pdc-accent);
 }
