@@ -159,7 +159,8 @@ open point 14).
   - Enter start/end times
 - Time validation and approval
   - Team lead approval interface
-  - Actual vs estimated duration tracking
+  - Actual vs estimated duration tracking: per meeting the real end according to our own staff and
+    the half hours charged, with a warning when they do not match (functional analysis 2.7)
 - Forfait (3h or 4h, for everyone) plus overtime counted per half hour (functional analysis
   2.4, BR-BKG-009); whether late hours have another rate is still open
 

@@ -123,13 +123,16 @@ De spreadsheet van de tolkenplanner (`TOLKENPLANNING_2026-2027.xlsx`) houdt per 
 bij of de factuur binnen is (met het factuurnummer, of alleen "ok"), of dat de tolk via Dimona werkt ("DIM", "DIM / ok").
 Een bureau factureert per maand voor al zijn tolken. Daarom in de FA:
 
-- een tabel `invoices` (FA §2.9): wie factureert, referentie, datum van ontvangst, periode, notities. Een positie
+- een tabel `invoices` (FA §2.9): wie factureert, referentie, datum van ontvangst, periode, nagekeken (wanneer en door
+  wie; "ok" in de spreadsheet betekent wellicht "ontvangen en nagekeken", na te vragen bij het personeel), notities. Een positie
   verwijst naar haar factuur (`booking_positions.invoice_id`); de planner noteert een factuur één keer en koppelt in één
   handeling alle posities die ze dekt;
 - per tolk `engagement`: `invoice` (de tolk werkt op factuur) of `occasional_work` (de tolk werkt via het systeem van
   gelegenheidswerk, met een Dimona-aangifte en zonder factuur; bevestigd door de gebruiker op 10 oktober 2026), en per
   positie `dimona_declared`;
-- op de boeking `forfait_hours` ("forfait 3u"); op de toewijzing `cancellation_communicated_on` ("annulation transmise");
+- op de boeking `forfait_hours` (3 of 4, "forfait 3u"; een begonnen half uur uitloop telt volledig); op de vergadering
+  `actual_end` (het reële einde volgens onze eigen mensen) en `charged_half_hours` (het aantal aangerekende halve uren);
+  op de toewijzing `cancellation_communicated_on` ("annulation transmise");
 - twee werklijsten: "factuur nog niet binnen" en "Dimona aan te geven".
 
 Elke koppeling, wijziging en ontkoppeling komt in het logboek (actie `invoice_linked`, `invoice_unlinked`,

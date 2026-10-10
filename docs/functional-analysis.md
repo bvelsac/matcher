@@ -92,6 +92,7 @@ Later a similar application will follow for another category of freelancers, als
 
 - Entered by the secretary in PDC, in PDC's own database, next to the copies of the spic meetings.
 - Fields: title, date, start, end or duration, room (from spic's fixed list of rooms), category, number of interpreters, notes. No sequence number, officials, agenda items or turn rota.
+- **All services are at the Parliament's expense**, own meetings included. The Parliament does not organise interpreting for third-party payers; that is not allowed (the user, 10 October 2026). PDC therefore has no field for who pays.
 - **No recurrence and no series:** each own meeting is entered on its own (a weekly series does not match reality).
 - An own meeting is fully editable in PDC. It can be **deleted only as long as no interpreter was ever assigned** to it; after that it can only be cancelled.
 - Open: linking an own meeting to a spic meeting if the same meeting later turns up in spic.
@@ -239,7 +240,7 @@ An availability says "I CAN work" but not "I WILL work". Transformation from ava
 - **BR-BKG-006**: Creating a booking for N interpreters creates N positions, numbered 1..N
 - **BR-BKG-007**: An interpreter or bureau has at most one CONFIRMED booking per time slot, and no CONFIRMED bookings with overlapping time slots. More interpreters from the same bureau for the same slot are added as extra positions on the existing booking (within the declared availability)
 - **BR-BKG-008**: A booking is COMPLETED when the work is done; actual hours are recorded per position (2.5)
-- **BR-BKG-009**: Every interpreter is paid the booking's forfait of 3 or 4 hours. When the meeting runs over, the extra time is added per half hour, for each position on its own actual hours ("forfait 3u + overuren" in the spreadsheet). Whether a half hour that has only started counts in full is to be confirmed
+- **BR-BKG-009**: Every interpreter is paid the booking's forfait of 3 or 4 hours. When the meeting runs over, the extra time is added per half hour; a half hour that has started counts in full (the user, 10 October 2026). "forfait 3u + overuren" in the spreadsheet. The real end and the half hours charged are recorded per meeting (2.7, BR-MTG-011)
 
 **Derived Properties**:
 - `quantity_booked`: Count of ACTIVE positions
@@ -291,7 +292,7 @@ A booking is the commitment to a supplier for a TIME BLOCK: "Bureau X, 3 interpr
 - `assigned_meetings`: Meetings linked to this position by non-cancelled assignments
 - `free_periods`: Parts of the booking's time block not covered by an assigned meeting
 - `actual_duration_hours`: (actual_end_time - actual_start_time) in hours
-- `overtime_half_hours`: the number of half hours worked beyond the booking's forfait (BR-BKG-009); 0 when the work stays within the forfait
+- `overtime_half_hours`: the number of half hours, started half hours counting in full, worked beyond the booking's forfait (BR-BKG-009), from the meeting's real end (2.7) unless the position's own actual end differs; 0 when the work stays within the forfait
 - `paid_hours`: forfait_hours + overtime_half_hours / 2
 - `invoice_received`: TRUE when the position is linked to an invoice. COMPLETED positions of interpreters on invoice without an invoice form the work list **invoice not received yet**; COMPLETED positions of interpreters in occasional work without a declaration form the work list **Dimona to declare**
 
@@ -375,6 +376,8 @@ Because one assignment = one interpreter, staffing a meeting is a matter of coun
 | `interpreters_needed` | Integer | > 0 | Number of interpreters required. **Kept in PDC**, also for spic meetings (spic does not know it). Required for own meetings. Proposal: a default for a new spic meeting, 3 for a plenary session and 2 otherwise (the spreadsheet has the rows Tolk 1, Tolk 2 and Tolk 3 (PLEN)); the planner can change it |
 | `category` | Enum | Required | Category used in PDC. For spic meetings it must be derived from domain, assembly and type (still to be designed, 9 point 12) |
 | `notes` | Text | Optional | PDC's own notes |
+| `actual_end` | Time | Optional | The real end of the meeting according to our own staff. Kept in PDC, also for spic meetings |
+| `charged_half_hours` | Integer | Optional, >= 0 | The number of half hours of overtime charged for the meeting |
 | `spic_data` | Document | SPIC only | The complete last state received from spic, including the fields PDC does not use (officials, comment, questions per agenda item, priority, transcription...) |
 | `last_change_number` | Integer | SPIC only | spic's change number of the last change applied to this copy |
 | `created_at`, `updated_at` | DateTime | System-maintained | When the copy or the own meeting was created and last changed |
@@ -391,6 +394,7 @@ Because one assignment = one interpreter, staffing a meeting is a matter of coun
 - **BR-MTG-008**: Spic meetings are recognised by `spic_id`, never by date and time. A meeting that moves to another week in spic stays the same meeting in PDC, with its assignments
 - **BR-MTG-009**: Only meetings of pre-definitive and definitive weeks are visible. When a week goes back to concept, its meetings disappear from the visible list; their copies and assignments are kept, and a meeting that has assignments is flagged to the planner
 - **BR-MTG-010**: Cancelling or deleting a meeting never cancels or removes its assignments automatically; the meeting appears on the work list "cancelled with an assigned interpreter" (1.6, 5.4)
+- **BR-MTG-011**: When actual_end is filled in, PDC calculates the half hours of overtime it implies against the forfait of the bookings involved (BR-BKG-009) and shows them next to charged_half_hours; a difference is flagged for the planner, e.g. when checking an invoice
 
 **Missing times** (proposal, to be confirmed): the checks that compare times (BR-POS-002, BR-ASGN-001, BR-ASGN-002, BR-VAL-004) use effective_start and expected_end when they are known. When one of them is missing, PDC uses the period (AM or PM) for matching the meeting to a time slot, does not refuse an assignment, and flags it as "time unknown" until spic provides the time.
 
@@ -471,6 +475,7 @@ Meetings are downstream consumers of booked capacity. The sequence is:
 | `reference` | String | Optional | The supplier's invoice number. The spreadsheet sometimes only notes "ok", without a number |
 | `received_on` | Date | Required | When the invoice came in |
 | `period` | String | Optional | The period it covers, e.g. a month |
+| `checked_on`, `checked_by` | Date, User | Optional | When and by whom the invoice was checked against the services it covers. "ok" in the spreadsheet probably means received and checked (the user, 10 October 2026; to be confirmed with the staff) |
 | `notes` | Text | Optional | E.g. "only one interpreter charged for this meeting" |
 | `created_at`, `created_by` | DateTime, User | System-generated | Who recorded it, when |
 
@@ -1216,7 +1221,7 @@ Not yet covered by this analysis:
    - *Editing lock* (decided 10 October 2026): **the editing lock goes.** Phase 1 locks the whole system for 4 hours while one editor dispatches, which conflicts with 1.4 (start time, room and cancellation at once, without a lock, also by another user). Instead, every action is one small transaction that checks, when saving, that the state still holds (the position is still free, the meeting still exists); if not, the user gets a clear message and the new state (then, now, your input). Conflicts only arise when two planners change the same position or meeting at the same moment, and the assignment log shows who did what.
    - *Login and roles* (decided 10 October 2026): PDC takes over the **identity from Authelia** (the headers `Remote-User`, `Remote-Name`, `Remote-Groups`, trusted only because the container is reachable only through Caddy), like spic; the own accounts and passwords of Phase 1 go. Everyone who enters data in spic or administers it (invoerders and beheerders) may manage PDC; there is no separate PDC role. spic keeps those lists in its administration screen, so spic gives them to PDC through a route with PDC's token (an addition to the contract). **PDC depends explicitly on Authelia and on spic.** What PDC does while that route does not exist yet is still to be decided. The name of the person goes with every write to spic ("via PDC", 1.4).
 4. **Interpreter portal**: interpreters enter their own start and end times; the team lead validates them. Positions hold the times, but the entry and validation step is missing.
-5. **Real duration of the meeting itself**: keep the initial estimate and record the real length of the meeting. Only the individual interpreters' hours are covered.
+5. **Real duration of the meeting itself** (answered 10 October 2026): the meeting gets an optional real end according to our own staff and the number of half hours charged (2.7, BR-MTG-011).
 6. **Interpreter becomes unavailable**: suggest the next interpreter in the priority list and record the communicated change. Only covered implicitly.
 7. **Booking someone who did not respond to the form** (from the overall list): allowed, but not stated as a rule.
 8. **BR-SRC-003** says "no overlap constraint", which contradicts the rule that the same meeting in two forms is a logical error and must be flagged.
@@ -1232,9 +1237,9 @@ Not yet covered by this analysis:
     - Meetings are spic's committee codes, plenary sessions and (extended) bureau, plus events that are not in spic (an animation in the hemicycle, a visit): confirms 1.1 and the own meetings.
     - Times are free text ("09.30 - 12.30", "11.00", "14.30 - finish", "?"): end times are often unknown, as in 2.7.
     - "FACT. of DIM" next to an interpreter holds the invoice number, "ok", "DIM" or "DIM / ok": invoice or occasional work with a Dimona declaration, a property of the interpreter (2.1, 2.5), and the invoice (2.9). Next to a meeting it sometimes holds one invoice number for the whole meeting.
-    - Next to the time: "forfait 3u", "forfait 3u + overuren", "bloc 1": the forfait of the booking, 3 or 4 hours for everyone, with overtime added per half hour (2.4, BR-BKG-009).
+    - Next to the time: "forfait 3u", "forfait 3u + overuren": the forfait of the booking, 3 or 4 hours for everyone, with overtime added per half hour (2.4, BR-BKG-009). "bloc 3" and "bloc 4" appear only in week 42, on meetings of 3 and 4 hours (e.g. 9:00 - 12:00 "bloc 3"): probably the same forfait in a newer notation (to be confirmed).
     - "annulation transmise dd/mm" next to an interpreter: when the cancellation was passed on (2.6).
     - "nom à confirmer": the bureau has not given the name yet (2.5, interpreter_name). Names struck through: an interpreter replaced or cancelled; PDC keeps that in the position's notes and the log. Cell comments note reasons ("ill", "time changed on 30/9") and invoice discrepancies ("only one interpreter charged on the September invoice").
-    - A memo sheet holds a request from another department for interpreters at an event it pays for itself.
+    - A memo sheet holds a request from another department of the Parliament for interpreters at an event it organises, at the Parliament's expense (1.5).
 
-    Questions for the user: what "ok" means without a number (invoice received, checked, or paid); what "bloc 1", "bloc 2" mean; whether own meetings need a department that pays (cost bearer); and whether the data of 2026-2027 must be imported into PDC.
+    Still open: whether "ok" means received and checked (to be confirmed with the staff); whether "bloc 3" and "bloc 4" are the forfait; and whether the bookings and invoices already in this spreadsheet for 2026-2027 must be imported into PDC, or PDC starts from a given week (spic's meetings arrive on their own).
