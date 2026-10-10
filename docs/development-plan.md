@@ -17,6 +17,7 @@
 
 ### Frontend Stack
 - **Framework**: HTML5 + Bootstrap 5 for responsive UI
+- **Visual style**: grainy, high-contrast pink-and-black duotone; see [visual-style.md](visual-style.md)
 - **JavaScript**: Vanilla JS for interactivity
 - **AJAX**: For dynamic updates without page reloads
 

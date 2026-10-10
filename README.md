@@ -34,7 +34,7 @@ extensions.py       Flask extensions
 manage.py           setup commands: tables, users, sample data
 templates/          HTML pages (Bootstrap 5)
 tests/              automated tests (pytest)
-docs/               functional analysis and development plan
+docs/               functional analysis, development plan and visual style
 ```
 
 ## Requirements
