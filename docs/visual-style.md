@@ -16,6 +16,11 @@ background, cropped, with faded colours, so that it stays behind the content. Pu
 `docs/img/` (or `static/` if it becomes a real asset) when the styling is built, and check that
 the footage may be used in the application.
 
+A third reference followed: an extreme close-up of an eye, almost abstract. The large black
+shape of the eye stands against blown-out pink skin, and the grain breaks up into coarse pixel
+clusters. It shows the eye-as-background idea already cropped. It is not in the repository
+yet either.
+
 Further direction from the user: a **gritty, pixelated black-and-white look**, coloured with
 the palette below.
 
