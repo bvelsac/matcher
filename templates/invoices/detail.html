@@ -1,0 +1,76 @@
+{% extends "base.html" %}
+{% from "_macros.html" import post_button %}
+
+{% block title %}Invoice - PDC{% endblock %}
+
+{% block body_class %}screen-invoices{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4 flex-wrap gap-2">
+    <h1><i class="bi bi-receipt"></i> Invoice {{ invoice.reference or '' }}</h1>
+    <a href="{{ url_for('invoices.list_invoices') }}" class="btn btn-secondary"><i class="bi bi-arrow-left"></i> Back to list</a>
+</div>
+
+<div class="card mb-4">
+    <div class="card-header"><h5 class="mb-0"><i class="bi bi-info-circle"></i> {{ invoice.interpreter.display_name }}</h5></div>
+    <div class="card-body">
+        <dl class="row mb-0">
+            <dt class="col-sm-3">Received on</dt><dd class="col-sm-9">{{ invoice.received_on.isoformat() }}</dd>
+            <dt class="col-sm-3">Reference</dt><dd class="col-sm-9">{{ invoice.reference or '-' }}</dd>
+            <dt class="col-sm-3">Period</dt><dd class="col-sm-9">{{ invoice.period or '-' }}</dd>
+            <dt class="col-sm-3">Checked</dt>
+            <dd class="col-sm-9">{% if invoice.checked_on %}{{ invoice.checked_on.isoformat() }}{% if invoice.checker %} by {{ invoice.checker.name or invoice.checker.username }}{% endif %}{% else %}not yet{% endif %}</dd>
+            {% if invoice.notes %}<dt class="col-sm-3">Notes</dt><dd class="col-sm-9">{{ invoice.notes }}</dd>{% endif %}
+        </dl>
+    </div>
+    {% if current_user.is_editor %}
+    <div class="card-footer">
+        {% if invoice.checked_on %}{{ post_button(url_for('invoices.invoice_action', id=invoice.id, action='unchecked'), 'Withdraw check', 'btn-outline-secondary') }}
+        {% else %}{{ post_button(url_for('invoices.invoice_action', id=invoice.id, action='checked'), 'Checked against the services', 'btn-outline-success', 'check-circle') }}{% endif %}
+    </div>
+    {% endif %}
+</div>
+
+<form method="post" action="{{ url_for('invoices.link_invoice', id=invoice.id) }}">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+    <div class="card mb-4">
+        <div class="card-header"><h5 class="mb-0"><i class="bi bi-link-45deg"></i> Services covered <span class="badge bg-secondary ms-2">{{ linked|length }}</span></h5></div>
+        <div class="card-body p-0"><div class="table-responsive">
+            <table class="table mb-0">
+                <thead class="table-light"><tr><th>Date</th><th>Interpreter</th><th>Forfait</th><th>Overtime</th></tr></thead>
+                <tbody>
+                {% for p in linked %}
+                    <tr>
+                        <td><a class="text-decoration-none" href="{{ url_for('bookings.booking_detail', id=p.booking_id) }}">{{ p.booking.slot.date.isoformat() }}</a></td>
+                        <td>{{ p.person }}</td>
+                        <td>{{ p.booking.forfait_hours }}h</td>
+                        <td>{% set over = planning_overtime(p) %}{{ '-' if over is none else over ~ ' half hours' }}</td>
+                    </tr>
+                {% else %}
+                    <tr><td colspan="4" class="text-muted">No services linked yet.</td></tr>
+                {% endfor %}
+                </tbody>
+            </table>
+        </div></div>
+    </div>
+
+    {% if current_user.is_editor %}
+    <div class="card mb-4">
+        <div class="card-header"><h6 class="mb-0"><i class="bi bi-plus-circle"></i> Link services</h6></div>
+        <div class="card-body">
+            {% if open_positions %}
+            {% for p in open_positions %}
+            <div class="form-check">
+                <input class="form-check-input" type="checkbox" name="position_id" value="{{ p.id }}" id="p{{ p.id }}">
+                <label class="form-check-label" for="p{{ p.id }}">{{ p.booking.slot.label }} &ndash; {{ p.person }} ({{ p.booking.status_display.lower() }})</label>
+            </div>
+            {% endfor %}
+            <button class="btn btn-primary mt-3" type="submit"><i class="bi bi-link-45deg"></i> Link the ticked services</button>
+            {% else %}
+            <p class="text-muted mb-0">No services of this supplier are waiting for an invoice.</p>
+            {% endif %}
+        </div>
+    </div>
+    {% endif %}
+</form>
+{% endblock %}

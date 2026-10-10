@@ -13,7 +13,10 @@ import threading
 import pytest
 from werkzeug.serving import make_server
 
-from conftest import login
+import sample_data
+from conftest import login, meeting_form
+from extensions import db
+from models import Booking, Meeting
 
 sync_api = pytest.importorskip("playwright.sync_api")
 
@@ -41,20 +44,27 @@ def browser():
         chromium.close()
 
 
+def serve_cdn_locally(page):
+    """Where the CDN cannot be reached, answer its requests from PDC_CDN_DIR (see the module doc)."""
+    cdn_dir = os.environ.get("PDC_CDN_DIR")
+    if not cdn_dir:
+        return
+
+    def serve_local(route):
+        match = CDN_URL.match(route.request.url)
+        path = match and os.path.join(cdn_dir, "{}-{}".format(*match.groups()[:2]), "package", match.group(3))
+        if path and os.path.isfile(path):
+            route.fulfill(path=path)
+        else:
+            route.abort()
+
+    page.route("https://cdn.jsdelivr.net/**", serve_local)
+
+
 @pytest.fixture
 def page(browser):
     page = browser.new_page(viewport={"width": 1280, "height": 800})
-    cdn_dir = os.environ.get("PDC_CDN_DIR")
-    if cdn_dir:
-        def serve_local(route):
-            match = CDN_URL.match(route.request.url)
-            path = match and os.path.join(cdn_dir, "{}-{}".format(*match.groups()[:2]), "package", match.group(3))
-            if path and os.path.isfile(path):
-                route.fulfill(path=path)
-            else:
-                route.abort()
-
-        page.route("https://cdn.jsdelivr.net/**", serve_local)
+    serve_cdn_locally(page)
     yield page
     page.close()
 
@@ -121,10 +131,7 @@ def test_working_screens_keep_text_readable(app, page, server):
 def test_meeting_list_badges_are_readable(app, page, server):
     client = app.test_client()
     login(client, "editor")
-    client.post("/meetings/add", data={
-        "name": "Test meeting", "date": "2099-01-05", "time": "10:00", "estimated_duration": "2",
-        "interpreters_needed": "2", "category": "parliament", "location": "Room 1",
-    })
+    client.post("/meetings/add", data=meeting_form(days_ahead=30))
     log_in(page, server)
     page.goto(server + "/meetings")
 
@@ -134,12 +141,53 @@ def test_meeting_list_badges_are_readable(app, page, server):
         assert badge.evaluate(CONTRAST_JS) >= 4.5
 
 
+def test_every_screen_with_sample_data_stays_readable(app, page, server):
+    with app.app_context():
+        sample_data.load()
+        db.session.commit()
+        meeting_id = Meeting.query.filter_by(spic_id="m-a0000001").one().id
+        booking_id = Booking.query.first().id
+    log_in(page, server)
+
+    for path in ["/", "/meetings", "/meetings/{}".format(meeting_id), "/meetings/{}/edit".format(meeting_id),
+                 "/bookings", "/bookings/{}".format(booking_id), "/invoices", "/worklists"]:
+        page.goto(server + path)
+        for selector in (".badge", ".btn", ".alert", "h1", "th"):
+            for element in page.query_selector_all(selector):
+                if element.is_visible():
+                    assert element.evaluate(CONTRAST_JS) >= 4.5, (path, selector, element.inner_text())
+        # Nothing wider than the screen: no sideways scrolling of the page.
+        assert page.evaluate("() => document.documentElement.scrollWidth <= window.innerWidth"), path
+
+
+def test_the_detail_page_works_on_a_phone(app, browser, server):
+    with app.app_context():
+        sample_data.load()
+        db.session.commit()
+        meeting_id = Meeting.query.filter_by(spic_id="m-a0000001").one().id
+    phone = browser.new_page(viewport={"width": 390, "height": 800})
+    try:
+        phone.set_extra_http_headers({"Remote-User": "editor", "Remote-Name": "Editor"})
+        serve_cdn_locally(phone)
+        phone.goto(server + "/meetings/{}".format(meeting_id))
+        assert phone.inner_text("h1")
+        # The tables scroll inside their card; the page itself does not.
+        assert phone.evaluate("() => document.documentElement.scrollWidth <= window.innerWidth")
+    finally:
+        phone.close()
+
+
 @pytest.mark.parametrize("path, background, accent", [
     ("/", "bg-dashboard.png", "rgb(254, 219, 149)"),
     ("/interpreters", "bg-interpreters.png", "rgb(251, 180, 194)"),
     ("/interpreters/add", "bg-interpreter-form.png", "rgb(251, 180, 194)"),
     ("/meetings", "bg-meetings.png", "rgb(207, 161, 238)"),
     ("/meetings/add", "bg-meeting-form.png", "rgb(207, 161, 238)"),
+    ("/bookings", "bg-bookings.png", "rgb(238, 193, 154)"),
+    ("/bookings/add", "bg-booking-form.png", "rgb(238, 193, 154)"),
+    ("/invoices", "bg-invoices.png", "rgb(207, 141, 201)"),
+    ("/invoices/add", "bg-invoice-form.png", "rgb(207, 141, 201)"),
+    ("/worklists", "bg-worklists.png", "rgb(242, 144, 126)"),
     ("/does-not-exist", "bg-error.png", "rgb(254, 198, 184)"),
 ])
 def test_each_screen_has_its_own_background_and_accent(page, server, path, background, accent):

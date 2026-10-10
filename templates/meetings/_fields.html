@@ -1,59 +1,81 @@
-{# Shared meeting form fields. Expects `values`: the meeting being edited, or request.form when adding. #}
+{# Meeting form fields. `values`: form values (a dict or request.form). `meeting`: the meeting being edited, or none. #}
+{% set is_spic = meeting and meeting.origin == 'spic' %}
 <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-<div class="mb-3">
-    <label for="name" class="form-label">Meeting name *</label>
-    <input type="text" class="form-control" id="name" name="name" value="{{ values.name or '' }}" required>
-</div>
+{% if meeting %}<input type="hidden" name="loaded_at" value="{{ meeting.updated_at.isoformat() if meeting.updated_at }}">{% endif %}
 
-{% set date_value = values.date.strftime('%Y-%m-%d') if values.date is defined and values.date and values.date is not string else (values.date or '') %}
-{% set time_value = values.time.strftime('%H:%M') if values.time is defined and values.time and values.time is not string else (values.time or '') %}
+{% if is_spic %}
+<div class="alert alert-info">
+    This meeting comes from spic. Date, times, room and cancellation are changed in spic (PDC will do the start time,
+    room and cancellation through spic later). Here you keep what PDC itself knows about the meeting.
+</div>
+{% else %}
+<div class="mb-3">
+    <label for="title" class="form-label">Title *</label>
+    <input type="text" class="form-control" id="title" name="title" value="{{ values.get('title', '') }}" required>
+</div>
 <div class="row">
-    <div class="col-md-6 mb-3">
+    <div class="col-md-4 mb-3">
         <label for="date" class="form-label">Date *</label>
-        <input type="date" class="form-control" id="date" name="date" value="{{ date_value }}" required>
+        <input type="date" class="form-control" id="date" name="date" value="{{ values.get('date', '') }}" required>
     </div>
-    <div class="col-md-6 mb-3">
-        <label for="time" class="form-label">Start time *</label>
-        <input type="time" class="form-control" id="time" name="time" value="{{ time_value }}" required>
+    <div class="col-md-4 mb-3">
+        <label for="start" class="form-label">Start *</label>
+        <input type="time" class="form-control" id="start" name="start" value="{{ values.get('start', '') }}" required>
+        <div class="form-text">Before 12:00 counts as morning, otherwise afternoon.</div>
+    </div>
+    <div class="col-md-4 mb-3">
+        <label for="room" class="form-label">Room *</label>
+        <input type="text" class="form-control" id="room" name="room" value="{{ values.get('room', '') }}" list="rooms" required>
+        <datalist id="rooms">{% for room in rooms %}<option value="{{ room.code }}">{{ room.description }}</option>{% endfor %}</datalist>
+        <div class="form-text">A room from spic's list.</div>
     </div>
 </div>
+<div class="row">
+    <div class="col-md-4 mb-3">
+        <label for="end" class="form-label">End</label>
+        <input type="time" class="form-control" id="end" name="end" value="{{ values.get('end', '') }}">
+    </div>
+    <div class="col-md-4 mb-3">
+        <label for="duration_hours" class="form-label">or duration (hours)</label>
+        <input type="text" class="form-control" id="duration_hours" name="duration_hours" value="{{ values.get('duration_hours', '') }}" placeholder="e.g. 2 or 1.5">
+        <div class="form-text">Fill in the end or the duration.</div>
+    </div>
+</div>
+{% endif %}
 
 <div class="row">
-    <div class="col-md-6 mb-3">
-        <label for="estimated_duration" class="form-label">Estimated duration *</label>
-        <select class="form-select" id="estimated_duration" name="estimated_duration" required>
-            <option value="">Select duration</option>
-            {% for hours in [1, 2, 3, 4, 5, 6, 7, 8] %}
-            <option value="{{ hours }}" {% if values.estimated_duration|string == hours|string %}selected{% endif %}>
-                {{ hours }} hour{{ 's' if hours > 1 }}
-            </option>
-            {% endfor %}
-        </select>
-    </div>
-    <div class="col-md-6 mb-3">
+    <div class="col-md-4 mb-3">
         <label for="interpreters_needed" class="form-label">Interpreters needed *</label>
-        <select class="form-select" id="interpreters_needed" name="interpreters_needed" required>
-            <option value="">Select number</option>
-            {% for n in range(1, 11) %}
-            <option value="{{ n }}" {% if values.interpreters_needed|string == n|string %}selected{% endif %}>
-                {{ n }} interpreter{{ 's' if n > 1 }}
-            </option>
+        <input type="number" min="1" class="form-control" id="interpreters_needed" name="interpreters_needed"
+               value="{{ values.get('interpreters_needed', '') or ('' if is_spic else 2) }}" required>
+    </div>
+    <div class="col-md-8 mb-3">
+        <label for="category" class="form-label">Category{{ '' if is_spic else ' *' }}</label>
+        <select class="form-select" id="category" name="category" {{ '' if is_spic else 'required' }}>
+            <option value="">{{ 'Not set' if is_spic else 'Choose...' }}</option>
+            {% for key, label in meeting_categories %}
+            <option value="{{ key }}" {{ 'selected' if values.get('category') == key }}>{{ label }}</option>
             {% endfor %}
         </select>
     </div>
 </div>
 
-<div class="mb-3">
-    <label for="category" class="form-label">Category *</label>
-    <select class="form-select" id="category" name="category" required>
-        <option value="">Select category</option>
-        {% for key, label in meeting_categories %}
-        <option value="{{ key }}" {% if values.category == key %}selected{% endif %}>{{ label }}</option>
-        {% endfor %}
-    </select>
+{% if meeting %}
+<div class="row">
+    <div class="col-md-4 mb-3">
+        <label for="actual_end" class="form-label">Real end</label>
+        <input type="time" class="form-control" id="actual_end" name="actual_end" value="{{ values.get('actual_end', '') }}">
+        <div class="form-text">According to our own staff.</div>
+    </div>
+    <div class="col-md-4 mb-3">
+        <label for="charged_half_hours" class="form-label">Half hours charged</label>
+        <input type="number" min="0" class="form-control" id="charged_half_hours" name="charged_half_hours" value="{{ values.get('charged_half_hours', '') }}">
+        <div class="form-text">Overtime, per started half hour.</div>
+    </div>
 </div>
+{% endif %}
 
 <div class="mb-3">
-    <label for="location" class="form-label">Location *</label>
-    <input type="text" class="form-control" id="location" name="location" value="{{ values.location or '' }}" required>
+    <label for="notes" class="form-label">Notes</label>
+    <textarea class="form-control" id="notes" name="notes" rows="3">{{ values.get('notes', '') }}</textarea>
 </div>

@@ -1,5 +1,29 @@
 # Changelog
 
+## 0.3.0 - PDC, step 3 (not tagged)
+
+- **The model of the functional analysis 1.2**: one table of meetings for the copy of spic and the
+  own meetings (origin, spic ID, status, week status, time of day, start time or "after another
+  meeting", times that may be missing, room, real end, half hours charged, the complete state from
+  spic as JSON); history of every change of the copy and of the own meetings.
+- **Bookings, positions and assignments** with forfait of 3 or 4 hours, the person sent, hours
+  worked and overtime per half hour; **invoices** linked to the services they cover; **Dimona**
+  for interpreters in occasional work.
+- **Append-only assignment log** with a snapshot of the meeting at every step; SQLite triggers
+  refuse any change or deletion of the log and of the history.
+- **Work lists**: cancelled with an assigned interpreter, changed since the confirmation, invoice
+  not received yet, Dimona to declare.
+- **`spic_copy.py`** applies what spic reports to the copy; **test data shaped like spic's export**
+  (the export itself does not exist yet; its shape is an assumption, see the module).
+- **Migrations** (Alembic), `manage.py make-migration`; `init-db` now creates or updates.
+- **Parallel planners**: every handling starts with SQLite's write lock (`BEGIN IMMEDIATE`) and reads the state
+  afresh, so two planners who assign the same interpreter at the same moment cannot both succeed; the second
+  gets the message of the broken rule.
+- Screens: meeting list with origin, status and staffing, meeting page with assignments, history
+  and log, bookings, invoices, work lists; new backgrounds and accents for them.
+- The prototype's meeting form (name, duration in hours, location, category) is gone: a database
+  of the Phase 1 prototype cannot be updated (there was no data worth keeping).
+
 ## 0.2.0 - PDC, step 2 (not tagged)
 
 - **Name and look**: the screens are called PDC and follow `docs/visual-style.md` (Arial, a

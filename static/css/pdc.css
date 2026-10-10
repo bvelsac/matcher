@@ -167,6 +167,42 @@ body.screen-meeting-form {
     --pdc-bg-position: 60% 50%;
 }
 
+body.screen-bookings,
+body.screen-booking-form {
+    --pdc-accent: var(--pdc-peach);
+}
+
+body.screen-bookings {
+    --pdc-bg: url("../img/bg-bookings.png");
+    --pdc-bg-position: 50% 50%;
+}
+
+body.screen-booking-form {
+    --pdc-bg: url("../img/bg-booking-form.png");
+    --pdc-bg-position: 50% 50%;
+}
+
+body.screen-invoices,
+body.screen-invoice-form {
+    --pdc-accent: var(--pdc-pink-muted);
+}
+
+body.screen-invoices {
+    --pdc-bg: url("../img/bg-invoices.png");
+    --pdc-bg-position: 50% 50%;
+}
+
+body.screen-invoice-form {
+    --pdc-bg: url("../img/bg-invoice-form.png");
+    --pdc-bg-position: 50% 50%;
+}
+
+body.screen-worklists {
+    --pdc-bg: url("../img/bg-worklists.png");
+    --pdc-bg-position: 50% 50%;
+    --pdc-accent: var(--pdc-coral);
+}
+
 body.screen-error {
     --pdc-bg: url("../img/bg-error.png");
     --pdc-bg-position: 50% 70%;

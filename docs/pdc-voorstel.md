@@ -1,10 +1,9 @@
 # PDC: afwijkingen van het prototype en ontwerp
 
-Stand: 10 oktober 2026. De besluiten staan in `docs/functional-analysis.md` (versie 1.2) en, voor de koppeling met spic,
+Stand: 10 oktober 2026 (stap 3 gebouwd). De besluiten staan in `docs/functional-analysis.md` (versie 1.2) en, voor de koppeling met spic,
 in `docs/stand-van-zaken.md` van `bvelsac/crystalclear`. Dit document zegt **wat er in de code van fase 1 afwijkt** van
 die besluiten, beschrijft **het model van de eigen kopie** van de vergaderingen en zegt wat de beslissingen van
-10 oktober 2026 (databank, vergrendeling, aanmelding, taal) in de code vragen. Er is nog niets aan de koppeling met spic
-gebouwd.
+10 oktober 2026 (databank, vergrendeling, aanmelding, taal) in de code vragen. Stap 3 (het nieuwe model, zonder koppeling met spic) is gebouwd; de koppeling zelf nog niet.
 
 **Beslissingen van de gebruiker op 10 oktober 2026** (over de voorstellen die hier stonden):
 
@@ -22,26 +21,26 @@ gebouwd.
 
 | # | Onderwerp | Prototype (fase 1) | Besloten (FA 1.2) | Gevolg |
 |---|---|---|---|---|
-| 1 | Herkomst van de vergaderingen | Met de hand ingevoerd (`/meetings/add`), met snelknoppen voor Uitgebreid Bureau en Bureau | Een kopie uit spic; alleen vergaderingen zonder verslag worden in PDC ingevoerd (§1.1, §1.5) | Tabel `meetings` wordt vervangen (§2 hieronder). Het formulier wordt het formulier voor eigen vergaderingen; de snelknoppen vervallen (die vergaderingen komen uit spic) |
-| 2 | Herkenning | Eigen geheel getal, geen verwijzing naar spic | Herkenning op de ID van spic (`m-xxxxxxxx`), nooit op datum en uur (BR-MTG-008) | Kolom `spic_id` |
-| 3 | Status en verwijderen | Geen status; verwijderen wist de rij, altijd toegelaten | Gepland, geannuleerd, verwijderd. Een spic-vergadering is in PDC niet te verwijderen; een eigen vergadering alleen zolang er nooit een tolk aan toegewezen was (BR-MTG-005, BR-MTG-006) | Kolom `status`; de verwijderknop alleen voor eigen vergaderingen, met de controle |
-| 4 | Tijden | Beginuur verplicht, duur in hele uren (1 tot 8) | Beginuur kan ontbreken ("na afloop van"), einde is optioneel, het dagdeel (AM/PM) is er altijd (§2.7) | Velden `period`, `start_kind`, `effective_start`, `expected_end`; controles op overlap moeten met een ontbrekend uur overweg |
-| 5 | Plaats | Vrije tekst (`location`) | Zaal uit de vaste lijst van spic, ook voor eigen vergaderingen | Kolom `room` (code) en een kopie van de lijst zalen; dat vraagt iets van de export van spic (§6) |
+| 1 | Herkomst van de vergaderingen | Met de hand ingevoerd (`/meetings/add`), met snelknoppen voor Uitgebreid Bureau en Bureau | Een kopie uit spic; alleen vergaderingen zonder verslag worden in PDC ingevoerd (§1.1, §1.5) | Gebouwd (stap 3): tabel `meetings` vervangen (§2). Het formulier is nu dat van eigen vergaderingen; de snelknoppen zijn weg. De kopie wordt gevuld door `spic_copy.py` met testgegevens in de vorm van de export |
+| 2 | Herkenning | Eigen geheel getal, geen verwijzing naar spic | Herkenning op de ID van spic (`m-xxxxxxxx`), nooit op datum en uur (BR-MTG-008) | Gebouwd: kolom `spic_id`, uniek |
+| 3 | Status en verwijderen | Geen status; verwijderen wist de rij, altijd toegelaten | Gepland, geannuleerd, verwijderd. Een spic-vergadering is in PDC niet te verwijderen; een eigen vergadering alleen zolang er nooit een tolk aan toegewezen was (BR-MTG-005, BR-MTG-006) | Gebouwd: kolom `status`; de verwijderknop alleen voor eigen vergaderingen, met de controle; een spic-vergadering weigert verwijderen |
+| 4 | Tijden | Beginuur verplicht, duur in hele uren (1 tot 8) | Beginuur kan ontbreken ("na afloop van"), einde is optioneel, het dagdeel (AM/PM) is er altijd (§2.7) | Gebouwd: velden `period`, `start_kind`, `effective_start`, `expected_end`; een ontbrekend uur wordt toegelaten en gemarkeerd, nooit als overlap geteld |
+| 5 | Plaats | Vrije tekst (`location`) | Zaal uit de vaste lijst van spic, ook voor eigen vergaderingen | Gebouwd: kolom `room` (code) en tabel `rooms`; de lijst zelf komt uit de export van spic (§6). Zolang `rooms` leeg is, geldt elke code |
 | 6 | Categorie | Vaste lijst van vier (Parliament, ...) | Voor spic-vergaderingen af te leiden van domein, assemblee en type; nog te ontwerpen (FA §9 punt 12) | Open; de vier blijven voorlopig voor eigen vergaderingen |
-| 7 | Wijzigen | Een editor wijzigt alle velden | Van een spic-vergadering alleen beginuur, zaal en annulering, via de schrijfroute van spic, zonder vergrendeling (§1.4) | Het bewerkscherm geldt alleen voor eigen vergaderingen; voor spic-vergaderingen komt een kleine actie |
-| 8 | Logboek en historiek | Geen. Alleen `created_by`, `created_at`, `updated_at` | Een eigen, alleen aanvullend logboek met een momentopname van de vergadering bij elke toewijzing; een historiek van de kopie; twee werklijsten (§1.6) | Nieuwe tabellen (§2) |
-| 9 | Annuleren | Geen annulering; FA 1.1 annuleerde de toewijzingen automatisch | Een annulering wist of annuleert nooit een toewijzing; de planner beslist (§5.4) | Werklijst "geannuleerd met toegewezen tolk" |
+| 7 | Wijzigen | Een editor wijzigt alle velden | Van een spic-vergadering alleen beginuur, zaal en annulering, via de schrijfroute van spic, zonder vergrendeling (§1.4) | Gebouwd: het bewerkscherm van een spic-vergadering toont alleen wat PDC zelf bijhoudt; beginuur, zaal en annulering volgen met de schrijfroute (stap 6) |
+| 8 | Logboek en historiek | Geen. Alleen `created_by`, `created_at`, `updated_at` | Een eigen, alleen aanvullend logboek met een momentopname van de vergadering bij elke toewijzing; een historiek van de kopie; twee werklijsten (§1.6) | Gebouwd: tabellen `meeting_changes` en `assignment_log` met triggers die UPDATE en DELETE weigeren; de werklijsten; "gewijzigd sinds je laatste bezoek" |
+| 9 | Annuleren | Geen annulering; FA 1.1 annuleerde de toewijzingen automatisch | Een annulering wist of annuleert nooit een toewijzing; de planner beslist (§5.4) | Gebouwd: een annulering of verwijdering in spic laat de toewijzingen staan; werklijst "geannuleerd met toegewezen tolk" |
 | 10 | Bijwerken en achtergrondtaak | Alleen gunicorn, geen achtergrondtaak | Bijwerken bij gebruik én door een achtergrondtaak, met een slot en een nachtelijke vergelijking (§1.3) | Een tweede proces nodig; nog niet bouwen |
 | 11 | Vergrendeling | Het hele systeem 4 uur op slot terwijl één editor toewijst | Beginuur, zaal en annulering direct en zonder vergrendeling, ook door een ander (§1.4) | Gebouwd op 10 oktober 2026: de vergrendeling is weg; een verouderd formulier wordt bij het opslaan opgevangen |
 | 12 | Aanmelding en rollen | Eigen accounts met wachtwoord (editor, viewer), na de aanmelding bij Authelia | Alle invoerders en beheerders van spic mogen PDC beheren, geen aparte rol; de naam van de persoon gaat mee naar de schrijfroute | Gebouwd op 10 oktober 2026: identiteit uit Authelia, geen wachtwoorden meer; rechten voorlopig via `PDC_EDITORS` tot spic de lijst geeft |
 | 13 | Naam | "Interpreter Management" in de schermen, "Interpreter Mission Management System" in de code en de documenten; `matcher` als repository, compose-project, image (`ghcr.io/bvelsac/matcher`), volume (`matcher_db`) en subdomein (`matcher.infracriv.net`) | PDC, Prestatiedatabank voor Conferentietolken | De schermen heten PDC sinds de stijl (10 oktober 2026); documenten en code nog bij te werken. De namen op het platform (repository, image, volume, subdomein) zijn de keuze van de gebruiker; `CAL` alleen op uitdrukkelijke vraag |
-| 14 | Databank | MySQL 8.0.40 in een eigen container | SQLite (besloten op 10 oktober 2026) | Gebouwd op 10 oktober 2026: SQLite in WAL-modus, één container, `manage.py backup`; migraties volgen met het nieuwe model |
+| 14 | Databank | MySQL 8.0.40 in een eigen container | SQLite (besloten op 10 oktober 2026) | Gebouwd op 10 oktober 2026: SQLite in WAL-modus, één container, `manage.py backup`; migraties gebouwd met het nieuwe model (Alembic, `manage.py make-migration`) |
 | 15 | Python | Vastgezet op 3.8, "dezelfde versie als de productieserver" | PDC draait in Docker op dezelfde server als spic; spic gebruikt Python 3.12. Python 3.8 krijgt sinds oktober 2024 geen veiligheidsupdates meer | Gebouwd op 10 oktober 2026: Python 3.12 in het image, recente vastgezette versies |
 | 16 | Uitrol | `git pull` en `docker compose up -d --build` op de server, image met tag `latest` | Eigen compose-project met eigen versie en tag; uitrollen via GitHub Actions; een sessie verbindt nooit zelf met de server | Een workflow en versienummers, zoals `spic.yml` in `crystalclear`. In `CAL` is er nog geen route voor `matcher` of PDC (alleen `jk`, `spic` en `um`), en de README noemt een DNS-record bij Cloudflare: beide alleen op uitdrukkelijke vraag van de gebruiker |
 | 17 | Tijden | Opgeslagen en getoond in UTC (de vergrendeling toont "UTC") | Tijden van spic zijn Brusselse tijd | Vergaderingen in Brusselse tijd zoals spic; tijdstippen van het logboek bewaren in UTC en tonen in Brusselse tijd |
 | 18 | Afspraken | Geen `CLAUDE.md` | Een `CLAUDE.md` met de afspraken en de naam PDC | Gemaakt op 10 oktober 2026 |
 | 19 | Taal | Code, commentaar en FA in het Engels | Code, commentaar en commitberichten in het Engels (besloten op 10 oktober 2026) | Geen; de code blijft Engels (§7) |
-| 20 | Tests | Tests met de testclient, geen browsertests | Een wijziging aan een pagina krijgt een browsertest | Eerste browsertests voor de stijl toegevoegd (`tests/test_browser.py`); de werkbank krijgt er meer |
+| 20 | Tests | Tests met de testclient, geen browsertests | Een wijziging aan een pagina krijgt een browsertest | Browsertests voor de stijl en voor alle schermen op leesbaarheid en breedte (`tests/test_browser.py`); de werkbank krijgt er meer |
 
 Wat **niet** afwijkt en blijft: de tolken en bureaus met de wettelijke prioriteitsvolgorde, de beschikbaarheden die
 voorlopig via Google Forms (CSV) komen, het model van boekingen, posities en toewijzingen uit de FA, CSRF-bescherming,
@@ -148,6 +147,22 @@ beschreven (FA §9 punt 17, met de vragen die nog openstaan).
   onbekend" (FA §2.7).
 - Testgegevens voor de werkbank in de vorm van de export van spic, zodat de koppeling later alleen de bron vervangt.
 
+### Wat er bij het bouwen van stap 3 anders of preciezer is dan dit ontwerp
+
+- `meeting_changes.meeting_id` heeft geen foreign key: de historiek van een eigen vergadering blijft bestaan als de
+  vergadering verwijderd wordt (met een laatste regel `deleted` die de eindtoestand bewaart).
+- `assignment_log.details` (JSON) bewaart bij elke regel de forfait, de leverancier, de inzet (factuur of
+  gelegenheidswerk) en wat bij de actie hoort (factuur, tijdstip van mededeling aan de tolk).
+- Acties in het logboek: `proposed`, `confirmed`, `cancelled`, `cancellation_communicated`, `checked`, `name_changed`,
+  `hours_recorded`, `booking_created`, `booking_confirmed`, `booking_cancelled`, `booking_completed`, `position_added`,
+  `position_cancelled`, `invoice_recorded`, `invoice_linked`, `invoice_unlinked`, `invoice_checked`,
+  `invoice_unchecked`, `dimona_declared`, `dimona_withdrawn`.
+- `interpreters_needed` heeft voor een nieuwe spic-vergadering een standaard (3 voor een plenaire, anders 2, volgens FA
+  §2.7) in plaats van leeg te blijven; de werklijst "nieuw uit spic" is dus niet nodig.
+- Tabel `time_slots` en `bookings`, `booking_positions`, `meeting_assignments` en `invoices` volgen de FA; de
+  beschikbaarheden en CSV-bronnen komen met fase 2.
+- De keuzes die de gebruiker nog niet bevestigd heeft, staan in FA §9 punt 18.
+
 ## 3. Besloten: de databank wordt SQLite
 
 **SQLite**, in WAL-modus, zoals spic. De redenen:
@@ -203,7 +218,12 @@ De vergrendeling van het hele systeem (fase 1) botst met de besluiten en verdwij
 - Geeft de export bij een wijziging de **naam van wie wijzigde** mee? Handig voor "gewijzigd door".
 - De **lijst van invoerders en beheerders** van spic voor de rechten in PDC (§5).
 - De vorm van de JSON (veldnamen zoals in de tabel `vergaderingen` van spic, lege tekst of `null` voor een ontbrekend
-  uur).
+  uur). PDC heeft in `spic_copy.py` een **veronderstelde** vorm gebouwd, om mee te testen: `id`, `maandag`, `weekstatus`
+  (`concept`, `pre-definitief`, `definitief`), `status` (`gepland`, `geannuleerd`, `verwijderd`), `versie`, `datum`,
+  `periode` (`AM`/`PM`), `start_soort` (`uur`, `na afloop van`), `start_uur`, `effectief_begin`, `verwacht_einde`,
+  `einde_volgende_dag`, `zaal`, `domein`, `assemblee`, `type`, `volgnummer`, `volgnummer2`. Een verwijderde vergadering
+  mag enkel `id` en `status` dragen. Graag de echte vorm doorgeven; ook de codes van de types, om de plenaire vergadering
+  (3 tolken) te herkennen.
 - In `docs/stand-van-zaken.md` staat bij "Koppeling spic naar de tolkenplanning" nog "Afgewezen door de gebruiker
   (9 okt 2026): ... een schrijfroute van spic", terwijl de beslissingen van 10 oktober en FA Opnamebeheer §13.2 van een
   schrijfroute uitgaan. Graag rechtzetten aan die kant.
@@ -216,9 +236,10 @@ document, mogen Nederlands zijn.
 ## 8. Voorgestelde volgorde
 
 1. ~~De gebruiker beslist over §3 (databank), §4 (vergrendeling), §5 (aanmelding) en §7 (taal).~~ Gedaan op 10 oktober 2026.
-2. Overstap naar SQLite, met migraties en een back-up; de vergrendeling eruit; aanmelding met Authelia (de rechten pas
-   als spic de lijst geeft).
-3. Het nieuwe vergadermodel, het logboek en de eigen vergaderingen, met testgegevens in de vorm van de export van spic;
-   daarna de werkbank. Intussen bouwt de spic-sessie de export (alleen lezen, dus veilig).
+2. ~~Overstap naar SQLite, de vergrendeling eruit, aanmelding met Authelia~~ (gedaan op 10 oktober 2026; de rechten pas
+   als spic de lijst geeft). Migraties kwamen met stap 3; de nachtelijke back-up op de server staat nog open.
+3. ~~Het nieuwe vergadermodel, het logboek en de eigen vergaderingen, met testgegevens in de vorm van de export van spic~~
+   (gedaan op 10 oktober 2026, met boekingen, facturen en werklijsten); daarna de werkbank (stap 4). Intussen bouwt de
+   spic-sessie de export (alleen lezen, dus veilig).
 4. De koppeling in PDC: bijwerken bij gebruik, de achtergrondtaak, de nachtelijke vergelijking.
 5. Als laatste de schrijfroute (beginuur, zaal, annulering).

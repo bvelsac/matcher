@@ -1,0 +1,96 @@
+{% extends "base.html" %}
+{% from "_macros.html" import meeting_status, origin_badge, time_range, post_button %}
+
+{% block title %}Work lists - PDC{% endblock %}
+
+{% block body_class %}screen-worklists{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h1><i class="bi bi-list-check"></i> Work lists</h1>
+</div>
+
+<div class="card mb-4" id="list-cancelled">
+    <div class="card-header"><h5 class="mb-0"><i class="bi bi-x-octagon"></i> Cancelled with an assigned interpreter
+        <span class="badge bg-{{ 'danger' if cancelled else 'secondary' }} ms-2">{{ cancelled|length }}</span></h5></div>
+    <div class="card-body p-0">
+        {% if cancelled %}
+        <div class="table-responsive"><table class="table table-hover mb-0">
+            <thead class="table-light"><tr><th>Meeting</th><th>Why</th><th>Interpreters</th></tr></thead>
+            <tbody>
+            {% for m in cancelled %}
+                <tr>
+                    <td><a class="text-decoration-none fw-bold" href="{{ url_for('meeting_detail', id=m.id) }}">{{ m.date.isoformat() }} {{ m.display_title }}</a> {{ origin_badge(m) }}</td>
+                    <td>{% if m.week_status == 'concept' %}week back in concept{% else %}{{ meeting_status(m) }}{% endif %}</td>
+                    <td>{% for a in m.active_assignments %}{{ a.position.person }}{{ ', ' if not loop.last }}{% endfor %}</td>
+                </tr>
+            {% endfor %}
+            </tbody>
+        </table></div>
+        {% else %}<p class="text-muted p-3 mb-0">Nothing to do.</p>{% endif %}
+    </div>
+</div>
+
+<div class="card mb-4" id="list-changed">
+    <div class="card-header"><h5 class="mb-0"><i class="bi bi-arrow-left-right"></i> Changed since the confirmation
+        <span class="badge bg-{{ 'warning' if changed else 'secondary' }} ms-2">{{ changed|length }}</span></h5></div>
+    <div class="card-body p-0">
+        {% if changed %}
+        <div class="table-responsive"><table class="table table-hover mb-0">
+            <thead class="table-light"><tr><th>Meeting</th><th>Interpreter</th><th>What changed</th>{% if current_user.is_editor %}<th></th>{% endif %}</tr></thead>
+            <tbody>
+            {% for a, entry, changes in changed %}
+                <tr>
+                    <td><a class="text-decoration-none fw-bold" href="{{ url_for('meeting_detail', id=a.meeting_id) }}">{{ a.meeting.date.isoformat() }} {{ a.meeting.display_title }}</a></td>
+                    <td>{{ a.position.person }}</td>
+                    <td>{% for field, (then, now) in changes.items() %}{{ field|replace('_', ' ') }}: {{ then or '-' }} &rarr; {{ now or '-' }}{{ '; ' if not loop.last }}{% endfor %}
+                        <br><small class="text-muted">since the {{ entry.action }} of {{ entry.recorded_at|brussels }}</small></td>
+                    {% if current_user.is_editor %}
+                    <td>{{ post_button(url_for('assignment_action', id=a.id, action='check'), 'Checked', 'btn-outline-success', 'check-circle') }}</td>
+                    {% endif %}
+                </tr>
+            {% endfor %}
+            </tbody>
+        </table></div>
+        {% else %}<p class="text-muted p-3 mb-0">Nothing to do.</p>{% endif %}
+    </div>
+</div>
+
+<div class="row">
+    <div class="col-lg-6 mb-4" id="list-invoice">
+        <div class="card h-100">
+            <div class="card-header"><h5 class="mb-0"><i class="bi bi-receipt"></i> Invoice not received yet
+                <span class="badge bg-{{ 'warning' if invoice_missing else 'secondary' }} ms-2">{{ invoice_missing|length }}</span></h5></div>
+            <div class="card-body p-0">
+                {% if invoice_missing %}
+                <ul class="list-group list-group-flush">
+                {% for p in invoice_missing %}
+                    <li class="list-group-item"><a class="text-decoration-none" href="{{ url_for('bookings.booking_detail', id=p.booking_id) }}">{{ p.booking.slot.date.isoformat() }}</a>
+                        {{ p.booking.interpreter.display_name }}{% if p.interpreter_name %} &ndash; {{ p.interpreter_name }}{% endif %}</li>
+                {% endfor %}
+                </ul>
+                {% else %}<p class="text-muted p-3 mb-0">Nothing to do.</p>{% endif %}
+            </div>
+        </div>
+    </div>
+    <div class="col-lg-6 mb-4" id="list-dimona">
+        <div class="card h-100">
+            <div class="card-header"><h5 class="mb-0"><i class="bi bi-person-check"></i> Dimona to declare
+                <span class="badge bg-{{ 'warning' if dimona else 'secondary' }} ms-2">{{ dimona|length }}</span></h5></div>
+            <div class="card-body p-0">
+                {% if dimona %}
+                <ul class="list-group list-group-flush">
+                {% for p in dimona %}
+                    <li class="list-group-item d-flex justify-content-between align-items-center">
+                        <span><a class="text-decoration-none" href="{{ url_for('bookings.booking_detail', id=p.booking_id) }}">{{ p.booking.slot.date.isoformat() }}</a>
+                            {{ p.person }}</span>
+                        {% if current_user.is_editor %}{{ post_button(url_for('bookings.position_action', id=p.id, action='dimona', next=url_for('worklists')), 'Declared', 'btn-outline-success', 'check-circle') }}{% endif %}
+                    </li>
+                {% endfor %}
+                </ul>
+                {% else %}<p class="text-muted p-3 mb-0">Nothing to do.</p>{% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

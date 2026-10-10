@@ -1,0 +1,60 @@
+{% extends "base.html" %}
+
+{% block title %}Add booking - PDC{% endblock %}
+
+{% block body_class %}screen-booking-form{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h1><i class="bi bi-plus-circle"></i> Add booking</h1>
+    <a href="{{ url_for('bookings.list_bookings') }}" class="btn btn-secondary"><i class="bi bi-arrow-left"></i> Back to list</a>
+</div>
+
+<div class="row"><div class="col-md-8 mx-auto">
+    <div class="card">
+        <div class="card-header"><h5 class="mb-0"><i class="bi bi-bookmark-check"></i> Booking</h5></div>
+        <div class="card-body">
+            <form method="POST">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                <div class="mb-3">
+                    <label for="interpreter_id" class="form-label">Interpreter or bureau *</label>
+                    <select class="form-select" id="interpreter_id" name="interpreter_id" required>
+                        <option value="">Choose...</option>
+                        {% for i in interpreters %}
+                        <option value="{{ i.id }}" {{ 'selected' if request.form.get('interpreter_id') == i.id|string }}>{{ i.priority_order }}. {{ i.display_name }} ({{ 'Dimona' if i.engagement == 'occasional_work' else 'invoice' }})</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="row">
+                    <div class="col-md-4 mb-3"><label for="date" class="form-label">Date *</label>
+                        <input type="date" class="form-control" id="date" name="date" value="{{ request.form.get('date', '') }}" required></div>
+                    <div class="col-md-4 mb-3"><label for="start" class="form-label">From *</label>
+                        <input type="time" class="form-control" id="start" name="start" value="{{ request.form.get('start', '') }}" required></div>
+                    <div class="col-md-4 mb-3"><label for="end" class="form-label">Until *</label>
+                        <input type="time" class="form-control" id="end" name="end" value="{{ request.form.get('end', '') }}" required></div>
+                </div>
+                <div class="row">
+                    <div class="col-md-6 mb-3"><label for="positions" class="form-label">Number of interpreters *</label>
+                        <input type="number" min="1" class="form-control" id="positions" name="positions" value="{{ request.form.get('positions', '1') }}" required>
+                        <div class="form-text">One for an individual; a bureau can be booked for several.</div></div>
+                    <div class="col-md-6 mb-3"><label for="forfait_hours" class="form-label">Forfait *</label>
+                        <select class="form-select" id="forfait_hours" name="forfait_hours">
+                            {% for h in forfaits %}<option value="{{ h }}" {{ 'selected' if (request.form.get('forfait_hours') or '4') == h|string }}>{{ h }} hours</option>{% endfor %}
+                        </select>
+                        <div class="form-text">When in doubt, four hours. Overtime is added per half hour.</div></div>
+                </div>
+                <div class="mb-3"><label for="description" class="form-label">Label of the period</label>
+                    <input type="text" class="form-control" id="description" name="description" value="{{ request.form.get('description', '') }}" placeholder="e.g. Monday afternoon"></div>
+                <div class="mb-3"><label for="reason" class="form-label">Reason</label>
+                    <input type="text" class="form-control" id="reason" name="reason" value="{{ request.form.get('reason', '') }}" placeholder="Why booked, if no meeting is known yet"></div>
+                <div class="mb-3"><label for="notes" class="form-label">Notes</label>
+                    <textarea class="form-control" id="notes" name="notes" rows="2">{{ request.form.get('notes', '') }}</textarea></div>
+                <div class="d-flex justify-content-between">
+                    <a href="{{ url_for('bookings.list_bookings') }}" class="btn btn-secondary"><i class="bi bi-x-circle"></i> Cancel</a>
+                    <button type="submit" class="btn btn-primary"><i class="bi bi-check-circle"></i> Add booking</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div></div>
+{% endblock %}

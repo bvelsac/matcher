@@ -40,6 +40,16 @@
 </div>
 
 <div class="mb-3">
+    <label for="engagement" class="form-label">How the interpreter works *</label>
+    <select class="form-select" id="engagement" name="engagement">
+        {% for key, label in engagement_labels.items() %}
+        <option value="{{ key }}" {{ 'selected' if (values.engagement or 'invoice') == key }}>{{ label }}</option>
+        {% endfor %}
+    </select>
+    <div class="form-text">On invoice (FACT.): an invoice comes in. Occasional work (DIM): a Dimona declaration, no invoice.</div>
+</div>
+
+<div class="mb-3">
     <label for="additional_languages" class="form-label">Additional languages</label>
     <div class="input-group">
         <span class="input-group-text"><i class="bi bi-translate"></i></span>

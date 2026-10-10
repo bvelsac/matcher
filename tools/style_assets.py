@@ -43,6 +43,11 @@ CROPS = {
     "meetings": (540, 820, 1280, 1280),         # mouth and cigarette
     "meeting-form": (380, 380, 1120, 840),      # nose
     "error": (560, 0, 1300, 460),               # forehead and eyebrow
+    "bookings": (1100, 20, 1840, 480),          # brow and hair, right
+    "booking-form": (700, 850, 1445, 1310),     # lips and chin
+    "invoices": (1170, 960, 1910, 1420),        # cheek, lower right
+    "invoice-form": (320, 170, 1060, 630),      # dark profile and nose
+    "worklists": (1000, 300, 1740, 760),        # temple and ear
 }
 
 

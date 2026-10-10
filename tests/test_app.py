@@ -1,6 +1,4 @@
-from datetime import date, timedelta
-
-from conftest import login, query
+from conftest import login, meeting_form, query
 from extensions import db
 from models import Interpreter, Meeting, User
 
@@ -11,16 +9,8 @@ def add_interpreter(client, first, last, email, bureau=""):
     })
 
 
-def add_meeting(client, name="Bureau", days_ahead=3, time="12:15"):
-    return client.post("/meetings/add", data={
-        "name": name,
-        "date": (date.today() + timedelta(days=days_ahead)).isoformat(),
-        "time": time,
-        "estimated_duration": "2",
-        "interpreters_needed": "1",
-        "location": "Room 1",
-        "category": "parliament",
-    })
+def add_meeting(client, **changes):
+    return client.post("/meetings/add", data=meeting_form(**changes))
 
 
 def interpreter_count(app):
@@ -74,7 +64,8 @@ def test_pages_render(app, client):
     add_meeting(client)
     meeting_id = query(app, lambda: Meeting.query.first().id)
     for url in ["/", "/interpreters", "/interpreters/add", "/interpreters/1/edit",
-                "/meetings", "/meetings/add", "/meetings/{}/edit".format(meeting_id)]:
+                "/meetings", "/meetings/add", "/meetings/{}".format(meeting_id), "/meetings/{}/edit".format(meeting_id),
+                "/bookings", "/bookings/add", "/invoices", "/invoices/add", "/worklists"]:
         response = client.get(url)
         assert response.status_code == 200, url
     # Names with an apostrophe are passed through data attributes, not inline JavaScript.
@@ -113,28 +104,36 @@ def test_priority_order_appends_reorders_and_renumbers(app, client):
     assert query(app, lambda: sorted(i.priority_order for i in Interpreter.query)) == [1, 2]
 
 
-def test_meetings_crud(app, client):
+def test_own_meetings_crud(app, client):
     login(client, "editor")
-    add_meeting(client, name="Uitgebreid Bureau", time="12:00")
-    meeting_id, meeting_date = query(app, lambda: (Meeting.query.one().id, Meeting.query.one().date))
+    response = add_meeting(client, title="Uitgebreid Bureau", start="12:00", end="")
+    assert b"Fill in the end or the duration" in response.data
+    assert b'value="Uitgebreid Bureau"' in response.data  # the form keeps what was typed
 
-    response = client.post("/meetings/{}/edit".format(meeting_id), data={
-        "name": "Uitgebreid Bureau", "date": meeting_date.isoformat(), "time": "12:30",
-        "estimated_duration": "3", "interpreters_needed": "2", "location": "Room 2",
-        "category": "parliament",
-    })
+    add_meeting(client, title="Uitgebreid Bureau", start="12:00", end="", duration_hours="1,5")
+    meeting = query(app, lambda: Meeting.query.one())
+    assert (meeting.origin, meeting.status, meeting.period) == ("own", "planned", "PM")
+    assert meeting.expected_end.strftime("%H:%M") == "13:30"
+    meeting_id, meeting_date = meeting.id, meeting.date
+
+    response = client.post("/meetings/{}/edit".format(meeting_id), data=meeting_form(
+        title="Uitgebreid Bureau", date=meeting_date.isoformat(), start="12:30", end="14:00",
+        room="R2", interpreters_needed="3", notes="Bring the folder"))
     assert response.status_code == 302
-    saved = query(app, lambda: (Meeting.query.one().time.strftime("%H:%M"), Meeting.query.one().interpreters_needed))
-    assert saved == ("12:30", 2)
+    saved = query(app, lambda: Meeting.query.one())
+    assert (saved.effective_start.strftime("%H:%M"), saved.interpreters_needed, saved.room) == ("12:30", 3, "R2")
 
     page = client.get("/meetings/{}/edit".format(meeting_id)).data
     assert b'value="12:30"' in page
     assert 'value="{}"'.format(meeting_date.isoformat()).encode() in page
-    assert b'<option value="3" selected>' in page
+    assert b'<option value="parliament" selected>' in page
 
-    response = add_meeting(client, name="Broken", time="not-a-time")
-    assert b"Check the date, time" in response.data
-    assert b'value="Broken"' in response.data  # the form keeps what was typed
+    for broken, message in [({"start": "not-a-time"}, b"Check the time"), ({"end": "09:00"}, b"end must be after"),
+                            ({"title": ""}, b"Title and room are required"),
+                            ({"interpreters_needed": "0"}, b"at least 1"), ({"category": ""}, b"Choose a category")]:
+        response = add_meeting(client, **broken)
+        assert message in response.data, broken
+    assert query(app, lambda: Meeting.query.count()) == 1
 
     client.post("/meetings/{}/delete".format(meeting_id))
     assert query(app, lambda: Meeting.query.count()) == 0
@@ -192,13 +191,10 @@ def test_an_outdated_meeting_form_is_caught(app, client):
     add_meeting(client)
     url = "/meetings/1/edit"
     loaded = edit_form(client, url)
-    data = {"name": "Bureau", "date": (date.today() + timedelta(days=3)).isoformat(), "time": "12:15",
-            "estimated_duration": "2", "interpreters_needed": "1", "location": "Room 1",
-            "category": "parliament"}
-    assert client.post(url, data=dict(data, location="Room 2", loaded_at=loaded)).status_code == 302
-    response = client.post(url, data=dict(data, location="Room 3", loaded_at=loaded))
+    assert client.post(url, data=dict(meeting_form(room="R2"), loaded_at=loaded)).status_code == 302
+    response = client.post(url, data=dict(meeting_form(room="R3"), loaded_at=loaded))
     assert b"Someone else changed this meeting" in response.data
-    assert query(app, lambda: Meeting.query.one().location) == "Room 2"
+    assert query(app, lambda: Meeting.query.one().room) == "R2"
 
 
 def test_sqlite_enforces_foreign_keys(app):

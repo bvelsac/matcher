@@ -1,4 +1,5 @@
 {% extends "base.html" %}
+{% from "_macros.html" import origin_badge, staffing, time_range %}
 
 {% block title %}Dashboard - PDC{% endblock %}
 
@@ -33,12 +34,13 @@
                 <div>
                     <h5 class="card-title">Upcoming meetings</h5>
                     <h2 class="mb-0 stat-value">{{ upcoming_meetings }}</h2>
+                    <small class="text-muted">{{ meetings_needing }} still need interpreters</small>
                 </div>
                 <i class="bi bi-calendar-event align-self-center stat-icon"></i>
             </div>
             <div class="card-footer">
                 <a href="{{ url_for('meetings') }}" class="text-decoration-none">
-                    <i class="bi bi-arrow-right"></i> Manage meetings
+                    <i class="bi bi-arrow-right"></i> Open meetings
                 </a>
             </div>
         </div>
@@ -63,35 +65,24 @@
     </div>
 </div>
 
-{% if current_user.is_editor %}
 <div class="card mb-4">
-    <div class="card-header"><h5 class="mb-0"><i class="bi bi-lightning"></i> Quick actions</h5></div>
+    <div class="card-header d-flex justify-content-between align-items-center">
+        <h5 class="mb-0"><i class="bi bi-list-check"></i> Work lists</h5>
+        <a href="{{ url_for('worklists') }}" class="btn btn-sm btn-outline-primary">Open</a>
+    </div>
     <div class="card-body">
-        <div class="row g-2">
-            <div class="col-md-3">
-                <a href="{{ url_for('add_interpreter') }}" class="btn btn-outline-primary w-100">
-                    <i class="bi bi-person-plus"></i><br>Add interpreter
-                </a>
-            </div>
-            <div class="col-md-3">
-                <a href="{{ url_for('add_meeting') }}" class="btn btn-outline-success w-100">
-                    <i class="bi bi-calendar-plus"></i><br>Add meeting
-                </a>
-            </div>
-            <div class="col-md-3">
-                <button class="btn btn-outline-secondary w-100" disabled>
-                    <i class="bi bi-file-earmark-arrow-down"></i><br>Import availabilities (phase 2)
-                </button>
-            </div>
-            <div class="col-md-3">
-                <button class="btn btn-outline-secondary w-100" disabled>
-                    <i class="bi bi-diagram-3"></i><br>Bookings (phase 2-3)
-                </button>
-            </div>
+        <div class="row g-2 text-center">
+            <div class="col-6 col-md-3"><a class="text-decoration-none" href="{{ url_for('worklists') }}#list-cancelled">
+                <span class="badge bg-{{ 'danger' if counts.cancelled else 'secondary' }}">{{ counts.cancelled }}</span><br>Cancelled with an assigned interpreter</a></div>
+            <div class="col-6 col-md-3"><a class="text-decoration-none" href="{{ url_for('worklists') }}#list-changed">
+                <span class="badge bg-{{ 'warning' if counts.changed else 'secondary' }}">{{ counts.changed }}</span><br>Changed since the confirmation</a></div>
+            <div class="col-6 col-md-3"><a class="text-decoration-none" href="{{ url_for('worklists') }}#list-invoice">
+                <span class="badge bg-{{ 'warning' if counts.invoice else 'secondary' }}">{{ counts.invoice }}</span><br>Invoice not received yet</a></div>
+            <div class="col-6 col-md-3"><a class="text-decoration-none" href="{{ url_for('worklists') }}#list-dimona">
+                <span class="badge bg-{{ 'warning' if counts.dimona else 'secondary' }}">{{ counts.dimona }}</span><br>Dimona to declare</a></div>
         </div>
     </div>
 </div>
-{% endif %}
 
 <div class="card">
     <div class="card-header d-flex justify-content-between align-items-center">
@@ -104,26 +95,22 @@
             <table class="table table-hover">
                 <thead>
                     <tr>
-                        <th>Meeting</th>
                         <th>Date &amp; time</th>
-                        <th>Category</th>
-                        <th>Location</th>
-                        <th>Interpreters</th>
-                        <th>Duration</th>
+                        <th>Meeting</th>
+                        <th>Room</th>
+                        <th>Origin</th>
+                        <th>Staffed</th>
                     </tr>
                 </thead>
                 <tbody>
                     {% for meeting in next_meetings %}
                     <tr>
-                        <td><strong>{{ meeting.name }}</strong></td>
-                        <td>
-                            {{ meeting.date.strftime('%Y-%m-%d') }}<br>
-                            <small class="text-muted"><i class="bi bi-clock"></i> {{ meeting.time.strftime('%H:%M') }}</small>
-                        </td>
-                        <td><span class="badge bg-secondary">{{ meeting.category_display }}</span></td>
-                        <td>{{ meeting.location }}</td>
-                        <td><span class="badge bg-primary">{{ meeting.interpreters_needed }}</span></td>
-                        <td>{{ meeting.estimated_duration }}h</td>
+                        <td>{{ meeting.date.isoformat() }}<br>
+                            <small class="text-muted"><i class="bi bi-clock"></i> {{ time_range(meeting) }}</small></td>
+                        <td><a href="{{ url_for('meeting_detail', id=meeting.id) }}" class="fw-bold text-decoration-none">{{ meeting.display_title }}</a></td>
+                        <td>{{ meeting.room or '-' }}</td>
+                        <td>{{ origin_badge(meeting) }}</td>
+                        <td>{{ staffing(meeting) }}</td>
                     </tr>
                     {% endfor %}
                 </tbody>
@@ -134,7 +121,7 @@
             <i class="bi bi-calendar-x empty-icon"></i>
             <p class="mt-2">No upcoming meetings.</p>
             {% if current_user.is_editor %}
-            <a href="{{ url_for('add_meeting') }}" class="btn btn-primary"><i class="bi bi-calendar-plus"></i> Add meeting</a>
+            <a href="{{ url_for('add_meeting') }}" class="btn btn-primary"><i class="bi bi-calendar-plus"></i> Add own meeting</a>
             {% endif %}
         </div>
         {% endif %}

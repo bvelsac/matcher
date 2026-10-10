@@ -1,0 +1,66 @@
+{# Small pieces shared by the screens: badges and buttons that post. #}
+
+{% macro meeting_status(m) -%}
+    {%- if m.status == 'planned' %}<span class="badge bg-success">Planned</span>
+    {%- elif m.status == 'cancelled' %}<span class="badge bg-danger">Cancelled</span>
+    {%- else %}<span class="badge bg-danger">Deleted in spic</span>{% endif -%}
+{%- endmacro %}
+
+{% macro origin_badge(m) -%}
+    <span class="badge bg-{{ 'info' if m.origin == 'spic' else 'secondary' }}">{{ m.origin_display }}</span>
+{%- endmacro %}
+
+{% macro staffing(m) -%}
+    {%- set cls = {'unstaffed': 'bg-danger', 'understaffed': 'bg-warning', 'fully_staffed': 'bg-success',
+                   'overstaffed': 'bg-info', 'staffed': 'bg-success'}[m.staffing_status] -%}
+    <span class="badge {{ cls }}" title="{{ m.staffing_status|replace('_', ' ') }}">{{ m.staffing_count }} / {{ m.interpreters_needed if m.interpreters_needed else '?' }}</span>
+{%- endmacro %}
+
+{% macro time_range(m) -%}
+    {%- if m.effective_start and m.expected_end -%}
+        {{ m.effective_start|hhmm }}&ndash;{{ m.expected_end|hhmm }}{% if m.end_next_day %} (+1){% endif %}
+    {%- elif m.effective_start -%}
+        from {{ m.effective_start|hhmm }}
+    {%- elif m.start_kind == 'after' -%}
+        after another meeting ({{ m.period }})
+    {%- else -%}
+        time unknown ({{ m.period }})
+    {%- endif -%}
+{%- endmacro %}
+
+{% macro booking_status(b) -%}
+    {%- set cls = {'proposed': 'bg-warning', 'confirmed': 'bg-success', 'completed': 'bg-info', 'cancelled': 'bg-danger'}[b.status] -%}
+    <span class="badge {{ cls }}">{{ b.status_display }}</span>
+{%- endmacro %}
+
+{% macro assignment_status(a) -%}
+    {%- set cls = {'proposed': 'bg-warning', 'confirmed': 'bg-success', 'cancelled': 'bg-danger'}[a.status] -%}
+    <span class="badge {{ cls }}">{{ a.status_display }}</span>
+{%- endmacro %}
+
+{% macro post_button(url, label, cls='btn-outline-primary', icon='', confirm='') -%}
+    <form method="post" action="{{ url }}" class="d-inline"
+          {%- if confirm %} onsubmit="return confirm({{ confirm|tojson|forceescape }})"{% endif %}>
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+        <button class="btn btn-sm {{ cls }}" type="submit">{% if icon %}<i class="bi bi-{{ icon }}"></i> {% endif %}{{ label }}</button>
+    </form>
+{%- endmacro %}
+
+{% macro log_table(entries) -%}
+    <div class="table-responsive">
+        <table class="table table-sm mb-0">
+            <thead><tr><th>When</th><th>Who</th><th>Action</th><th>Interpreter</th><th>Reason / details</th></tr></thead>
+            <tbody>
+            {% for e in entries %}
+                <tr>
+                    <td class="text-nowrap">{{ e.recorded_at|brussels }}</td>
+                    <td>{{ e.user_name }}</td>
+                    <td>{{ e.action|replace('_', ' ') }}</td>
+                    <td>{{ e.interpreter_name or '' }}</td>
+                    <td>{{ e.reason or '' }}{% if e.details and e.details.get('invoice_id') %} (invoice {{ e.details.get('reference') or e.details.get('invoice_id') }}){% endif %}</td>
+                </tr>
+            {% endfor %}
+            </tbody>
+        </table>
+    </div>
+{%- endmacro %}

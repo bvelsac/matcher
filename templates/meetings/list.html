@@ -1,4 +1,5 @@
 {% extends "base.html" %}
+{% from "_macros.html" import meeting_status, origin_badge, staffing, time_range %}
 
 {% block title %}Meetings - PDC{% endblock %}
 
@@ -8,196 +9,94 @@
 <div class="d-flex justify-content-between align-items-center mb-4">
     <h1><i class="bi bi-calendar-event"></i> Meetings</h1>
     {% if current_user.is_editor %}
-    <a href="{{ url_for('add_meeting') }}" class="btn btn-primary"><i class="bi bi-calendar-plus"></i> Add meeting</a>
+    <a href="{{ url_for('add_meeting') }}" class="btn btn-primary"><i class="bi bi-calendar-plus"></i> Add own meeting</a>
     {% endif %}
 </div>
 
-<div class="row mb-4">
-    <div class="col-md-8">
+<form method="get" class="row g-2 mb-4" id="meeting-filter">
+    <div class="col-md-5">
         <div class="input-group">
             <span class="input-group-text"><i class="bi bi-search"></i></span>
-            <input type="text" class="form-control" id="search-input" placeholder="Search by name or location">
+            <input type="text" class="form-control" name="q" value="{{ q }}" placeholder="Search by title, room, type or spic id">
         </div>
     </div>
-    <div class="col-md-4">
-        <select class="form-select" id="category-filter">
-            <option value="">All categories</option>
-            {% for key, label in meeting_categories %}
-            <option value="{{ key }}">{{ label }}</option>
-            {% endfor %}
+    <div class="col-md-2">
+        <select class="form-select" name="when" aria-label="Period">
+            <option value="upcoming" {{ 'selected' if when == 'upcoming' }}>Upcoming</option>
+            <option value="past" {{ 'selected' if when == 'past' }}>Past</option>
+            <option value="all" {{ 'selected' if when == 'all' }}>All</option>
         </select>
     </div>
-</div>
+    <div class="col-md-2">
+        <select class="form-select" name="origin" aria-label="Origin">
+            <option value="">From spic and own</option>
+            <option value="spic" {{ 'selected' if origin == 'spic' }}>From spic</option>
+            <option value="own" {{ 'selected' if origin == 'own' }}>Own</option>
+        </select>
+    </div>
+    <div class="col-md-2 d-flex align-items-center">
+        <div class="form-check">
+            <input class="form-check-input" type="checkbox" name="deleted" value="1" id="deleted" {{ 'checked' if show_deleted }}>
+            <label class="form-check-label" for="deleted">Deleted in spic</label>
+        </div>
+    </div>
+    <div class="col-md-1"><button class="btn btn-outline-primary w-100" type="submit">Show</button></div>
+</form>
 
 {% if meetings %}
 <div class="card">
     <div class="card-header d-flex justify-content-between align-items-center">
-        <h5 class="mb-0">
-            <i class="bi bi-calendar3"></i> All meetings
-            <span class="badge bg-secondary ms-2" id="meetings-count">{{ meetings|length }}</span>
-        </h5>
-        <div class="btn-group btn-group-sm">
-            <button class="btn btn-outline-primary active" onclick="toggleView('table')" id="table-view-btn"><i class="bi bi-table"></i> Table</button>
-            <button class="btn btn-outline-primary" onclick="toggleView('cards')" id="cards-view-btn"><i class="bi bi-grid"></i> Cards</button>
-        </div>
+        <h5 class="mb-0"><i class="bi bi-calendar3"></i> Meetings
+            <span class="badge bg-secondary ms-2" id="meetings-count">{{ meetings|length }}</span></h5>
+        {% if previous_visit %}<small class="text-muted">Changes since your last visit are marked.</small>{% endif %}
     </div>
     <div class="card-body p-0">
-        <div id="table-view">
-            <div class="table-responsive">
-                <table class="table table-hover mb-0">
-                    <thead class="table-light">
-                        <tr>
-                            <th>Meeting</th>
-                            <th>Date &amp; time</th>
-                            <th>Category</th>
-                            <th>Location</th>
-                            <th>Interpreters</th>
-                            <th>Duration</th>
-                            {% if current_user.is_editor %}<th style="width: 110px;">Actions</th>{% endif %}
-                        </tr>
-                    </thead>
-                    <tbody>
-                        {% for meeting in meetings %}
-                        <tr class="meeting-item" data-name="{{ meeting.name|lower }}" data-location="{{ meeting.location|lower }}" data-category="{{ meeting.category }}">
-                            <td><strong>{{ meeting.name }}</strong></td>
-                            <td>
-                                {{ meeting.date.strftime('%Y-%m-%d') }}
-                                {% if meeting.date < today %}<span class="badge bg-light text-muted">past</span>{% endif %}<br>
-                                <small class="text-muted"><i class="bi bi-clock"></i> {{ meeting.time.strftime('%H:%M') }}</small>
-                            </td>
-                            <td><span class="badge bg-secondary">{{ meeting.category_display }}</span></td>
-                            <td>{{ meeting.location }}</td>
-                            <td><span class="badge bg-primary">{{ meeting.interpreters_needed }}</span></td>
-                            <td>{{ meeting.estimated_duration }}h</td>
-                            {% if current_user.is_editor %}
-                            <td>
-                                <div class="btn-group btn-group-sm">
-                                    <a href="{{ url_for('edit_meeting', id=meeting.id) }}" class="btn btn-outline-primary" title="Edit"><i class="bi bi-pencil"></i></a>
-                                    <button type="button" class="btn btn-outline-danger" title="Delete"
-                                            data-url="{{ url_for('delete_meeting', id=meeting.id) }}"
-                                            data-name="{{ meeting.name }}"
-                                            onclick="deleteMeeting(this)">
-                                        <i class="bi bi-trash"></i>
-                                    </button>
-                                </div>
-                            </td>
-                            {% endif %}
-                        </tr>
-                        {% endfor %}
-                    </tbody>
-                </table>
-            </div>
-        </div>
-
-        <div id="cards-view" style="display: none;">
-            <div class="row p-3">
+        <div class="table-responsive">
+            <table class="table table-hover mb-0">
+                <thead class="table-light">
+                    <tr>
+                        <th>Date &amp; time</th>
+                        <th>Meeting</th>
+                        <th>Room</th>
+                        <th>Origin</th>
+                        <th>Status</th>
+                        <th title="Confirmed interpreters / needed">Staffed</th>
+                    </tr>
+                </thead>
+                <tbody>
                 {% for meeting in meetings %}
-                <div class="col-md-6 col-lg-4 mb-3 meeting-item" data-name="{{ meeting.name|lower }}" data-location="{{ meeting.location|lower }}" data-category="{{ meeting.category }}">
-                    <div class="card meeting-card h-100">
-                        <div class="card-header d-flex justify-content-between align-items-center">
-                            <h6 class="mb-0">{{ meeting.name }}</h6>
-                            <span class="badge bg-secondary">{{ meeting.category_display }}</span>
-                        </div>
-                        <div class="card-body">
-                            <div class="mb-2"><i class="bi bi-calendar3 text-primary"></i> <strong>{{ meeting.date.strftime('%Y-%m-%d') }}</strong> at {{ meeting.time.strftime('%H:%M') }}</div>
-                            <div class="mb-2"><i class="bi bi-geo-alt text-success"></i> {{ meeting.location }}</div>
-                            <div class="mb-2"><i class="bi bi-people text-info"></i> {{ meeting.interpreters_needed }} interpreter{{ 's' if meeting.interpreters_needed > 1 }}</div>
-                            <div><i class="bi bi-hourglass-split text-warning"></i> {{ meeting.estimated_duration }} hours</div>
-                        </div>
-                        {% if current_user.is_editor %}
-                        <div class="card-footer">
-                            <div class="btn-group w-100">
-                                <a href="{{ url_for('edit_meeting', id=meeting.id) }}" class="btn btn-outline-primary btn-sm"><i class="bi bi-pencil"></i> Edit</a>
-                                <button type="button" class="btn btn-outline-danger btn-sm"
-                                        data-url="{{ url_for('delete_meeting', id=meeting.id) }}"
-                                        data-name="{{ meeting.name }}"
-                                        onclick="deleteMeeting(this)">
-                                    <i class="bi bi-trash"></i> Delete
-                                </button>
-                            </div>
-                        </div>
-                        {% endif %}
-                    </div>
-                </div>
+                    <tr class="meeting-item">
+                        <td class="text-nowrap">
+                            {{ meeting.date.isoformat() }}
+                            {% if meeting.date < today %}<span class="badge bg-secondary">past</span>{% endif %}<br>
+                            <small class="text-muted"><i class="bi bi-clock"></i>
+                                {{ time_range(meeting) }}</small>
+                            {% if not meeting.time_known %}<span class="badge bg-warning" title="Time unknown: assignments are allowed but flagged">time?</span>{% endif %}
+                        </td>
+                        <td>
+                            <a href="{{ url_for('meeting_detail', id=meeting.id) }}" class="fw-bold text-decoration-none">{{ meeting.display_title }}</a>
+                            {% if meeting.id in changed_ids %}<span class="badge bg-info ms-1">changed</span>{% endif %}
+                            {% if meeting.week_status == 'pre_definitive' %}<span class="badge bg-secondary ms-1" title="The week is pre-definitive in spic">pre-def.</span>{% endif %}
+                        </td>
+                        <td>{{ meeting.room or '-' }}</td>
+                        <td>{{ origin_badge(meeting) }}</td>
+                        <td>{{ meeting_status(meeting) }}</td>
+                        <td>{% if meeting.status == 'planned' %}{{ staffing(meeting) }}{% else %}-{% endif %}</td>
+                    </tr>
                 {% endfor %}
-            </div>
+                </tbody>
+            </table>
         </div>
     </div>
 </div>
-
-<div class="row mt-4">
-    <div class="col-md-3">
-        <div class="card text-center"><div class="card-body">
-            <h6 class="card-title">Total meetings</h6>
-            <h2 class="text-primary">{{ meetings|length }}</h2>
-        </div></div>
-    </div>
-    <div class="col-md-3">
-        <div class="card text-center"><div class="card-body">
-            <h6 class="card-title">Upcoming</h6>
-            <h2 class="text-success">{{ meetings|selectattr('date', 'ge', today)|list|length }}</h2>
-        </div></div>
-    </div>
-    <div class="col-md-3">
-        <div class="card text-center"><div class="card-body">
-            <h6 class="card-title">Interpreters requested</h6>
-            <h2 class="text-info">{{ meetings|sum(attribute='interpreters_needed') }}</h2>
-        </div></div>
-    </div>
-    <div class="col-md-3">
-        <div class="card text-center"><div class="card-body">
-            <h6 class="card-title">Meeting hours (estimate)</h6>
-            <h2 class="text-warning">{{ meetings|sum(attribute='estimated_duration') }}</h2>
-        </div></div>
-    </div>
-</div>
-
 {% else %}
 <div class="text-center py-5">
     <i class="bi bi-calendar-x empty-icon"></i>
-    <h3 class="mt-3 text-muted">No meetings yet</h3>
+    <h3 class="mt-3 text-muted">No meetings here</h3>
+    <p class="text-muted">Meetings from spic appear here once PDC is connected to spic; meetings without a report are entered in PDC.</p>
     {% if current_user.is_editor %}
-    <a href="{{ url_for('add_meeting') }}" class="btn btn-primary"><i class="bi bi-calendar-plus"></i> Add the first meeting</a>
+    <a href="{{ url_for('add_meeting') }}" class="btn btn-primary"><i class="bi bi-calendar-plus"></i> Add an own meeting</a>
     {% endif %}
 </div>
 {% endif %}
-{% endblock %}
-
-{% block extra_js %}
-<script>
-    let currentView = 'table';
-
-    document.getElementById('search-input').addEventListener('input', filterMeetings);
-    document.getElementById('category-filter').addEventListener('change', filterMeetings);
-
-    function toggleView(view) {
-        currentView = view;
-        document.getElementById('table-view').style.display = view === 'table' ? 'block' : 'none';
-        document.getElementById('cards-view').style.display = view === 'cards' ? 'block' : 'none';
-        document.getElementById('table-view-btn').classList.toggle('active', view === 'table');
-        document.getElementById('cards-view-btn').classList.toggle('active', view === 'cards');
-        filterMeetings();
-    }
-
-    function filterMeetings() {
-        const text = document.getElementById('search-input').value.toLowerCase();
-        const category = document.getElementById('category-filter').value;
-        let visible = 0;
-        const container = document.getElementById(currentView === 'table' ? 'table-view' : 'cards-view');
-        document.querySelectorAll('.meeting-item').forEach(item => {
-            const match = (!text || item.dataset.name.includes(text) || item.dataset.location.includes(text))
-                && (!category || item.dataset.category === category);
-            item.style.display = match ? '' : 'none';
-            if (match && container.contains(item)) visible++;
-        });
-        const counter = document.getElementById('meetings-count');
-        if (counter) counter.textContent = visible;
-    }
-
-    function deleteMeeting(button) {
-        if (confirmDelete(`Delete meeting "${button.dataset.name}"?`)) {
-            postForm(button.dataset.url);
-        }
-    }
-</script>
 {% endblock %}

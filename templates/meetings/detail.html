@@ -1,0 +1,191 @@
+{% extends "base.html" %}
+{% from "_macros.html" import meeting_status, origin_badge, staffing, time_range, assignment_status, post_button, log_table %}
+
+{% block title %}{{ meeting.display_title }} - PDC{% endblock %}
+
+{% block body_class %}screen-meetings{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4 flex-wrap gap-2">
+    <h1><i class="bi bi-calendar-event"></i> {{ meeting.display_title }}</h1>
+    <a href="{{ url_for('meetings') }}" class="btn btn-secondary"><i class="bi bi-arrow-left"></i> Back to list</a>
+</div>
+
+{% if not meeting.is_visible %}
+<div class="alert alert-warning">The week of this meeting went back to concept in spic. The meeting is hidden from the list; its assignments are kept.</div>
+{% endif %}
+{% if meeting.status != 'planned' and meeting.active_assignments %}
+<div class="alert alert-danger">
+    This meeting is {{ meeting.status_display.lower() }} but still has assignments. Cancelling them is your decision (it is not done automatically).
+</div>
+{% endif %}
+
+<div class="row">
+    <div class="col-lg-5 mb-4">
+        <div class="card h-100">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <h5 class="mb-0"><i class="bi bi-info-circle"></i> Meeting</h5>
+                <span>{{ origin_badge(meeting) }} {{ meeting_status(meeting) }}</span>
+            </div>
+            <div class="card-body">
+                <dl class="row mb-0">
+                    <dt class="col-5">Date</dt><dd class="col-7">{{ meeting.date.isoformat() }} ({{ meeting.period }})</dd>
+                    <dt class="col-5">Time</dt><dd class="col-7">{{ time_range(meeting) }}</dd>
+                    <dt class="col-5">Room</dt><dd class="col-7">{{ meeting.room or '-' }}</dd>
+                    <dt class="col-5">Interpreters needed</dt><dd class="col-7">{{ meeting.interpreters_needed or '-' }}</dd>
+                    <dt class="col-5">Staffed</dt><dd class="col-7">{% if meeting.status == 'planned' %}{{ staffing(meeting) }}{% else %}-{% endif %}</dd>
+                    <dt class="col-5">Category</dt><dd class="col-7">{{ meeting.category_display }}</dd>
+                    {% if meeting.origin == 'spic' %}
+                    <dt class="col-5">spic id</dt><dd class="col-7"><code>{{ meeting.spic_id }}</code></dd>
+                    <dt class="col-5">Week</dt><dd class="col-7">{{ meeting.week.isoformat() if meeting.week }} ({{ meeting.week_status_display }})</dd>
+                    {% endif %}
+                    {% if meeting.actual_end or meeting.charged_half_hours is not none %}
+                    <dt class="col-5">Real end</dt><dd class="col-7">{{ meeting.actual_end|hhmm or '-' }}</dd>
+                    <dt class="col-5">Half hours charged</dt>
+                    <dd class="col-7">{{ meeting.charged_half_hours if meeting.charged_half_hours is not none else '-' }}
+                        {% if overtime.mismatch %}<span class="badge bg-warning" title="From the real end and the forfaits">expected {{ overtime.implied }}</span>{% endif %}
+                    </dd>
+                    {% endif %}
+                    {% if meeting.notes %}<dt class="col-5">Notes</dt><dd class="col-7">{{ meeting.notes }}</dd>{% endif %}
+                </dl>
+                {% if not meeting.time_known %}
+                <p class="text-muted small mt-3 mb-0">The time is not (fully) known yet. Interpreters can be proposed; they are flagged until the time is known.</p>
+                {% endif %}
+            </div>
+            {% if current_user.is_editor %}
+            <div class="card-footer d-flex gap-2 flex-wrap">
+                <a href="{{ url_for('edit_meeting', id=meeting.id) }}" class="btn btn-sm btn-outline-primary"><i class="bi bi-pencil"></i> Edit</a>
+                {% if meeting.origin == 'own' %}
+                    {% if meeting.status == 'planned' %}
+                    {{ post_button(url_for('meeting_status', id=meeting.id, action='cancel'), 'Cancel meeting', 'btn-outline-warning', 'x-circle', 'Cancel this meeting? Its assignments stay until you cancel them.') }}
+                    {% else %}
+                    {{ post_button(url_for('meeting_status', id=meeting.id, action='reopen'), 'Plan again', 'btn-outline-primary', 'arrow-counterclockwise') }}
+                    {% endif %}
+                    {% if can_delete %}
+                    {{ post_button(url_for('delete_meeting', id=meeting.id), 'Delete', 'btn-outline-danger', 'trash', 'Delete this meeting?') }}
+                    {% else %}
+                    <span class="text-muted small align-self-center">Can only be cancelled: an interpreter was assigned at some point.</span>
+                    {% endif %}
+                {% else %}
+                    <span class="text-muted small align-self-center">Start time, room and cancellation: in spic for now.</span>
+                {% endif %}
+            </div>
+            {% endif %}
+        </div>
+    </div>
+
+    <div class="col-lg-7 mb-4">
+        <div class="card h-100">
+            <div class="card-header"><h5 class="mb-0"><i class="bi bi-people"></i> Interpreters</h5></div>
+            <div class="card-body p-0">
+                {% if assignments %}
+                <div class="table-responsive">
+                    <table class="table mb-0">
+                        <thead><tr><th>Interpreter</th><th>Booking</th><th>Status</th>{% if current_user.is_editor %}<th>Actions</th>{% endif %}</tr></thead>
+                        <tbody>
+                        {% for a in assignments %}
+                            <tr>
+                                <td>
+                                    <strong>{{ a.position.person }}</strong>
+                                    {% if a.position.interpreter_name %}<br><small class="text-muted">{{ a.position.interpreter.display_name }}</small>{% endif %}
+                                    {% if not meeting.time_known and a.status != 'cancelled' %}<span class="badge bg-warning">time unknown</span>{% endif %}
+                                </td>
+                                <td><a href="{{ url_for('bookings.booking_detail', id=a.position.booking_id) }}" class="text-decoration-none">
+                                    {{ a.position.booking.slot.label }}, forfait {{ a.position.booking.forfait_hours }}h</a></td>
+                                <td>{{ assignment_status(a) }}
+                                    {% if a.cancellation_communicated_on %}<br><small class="text-muted">told {{ a.cancellation_communicated_on.isoformat() }}</small>{% endif %}</td>
+                                {% if current_user.is_editor %}
+                                <td>
+                                    {% if a.status == 'proposed' %}
+                                    {{ post_button(url_for('assignment_action', id=a.id, action='confirm'), 'Confirm', 'btn-outline-success', 'check-circle') }}
+                                    {% endif %}
+                                    {% if a.status != 'cancelled' %}
+                                    <details class="mt-1">
+                                        <summary class="text-danger"><i class="bi bi-x-circle"></i> Cancel...</summary>
+                                        <form method="post" action="{{ url_for('assignment_action', id=a.id, action='cancel') }}" class="mt-2">
+                                            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                                            <input class="form-control form-control-sm mb-1" name="reason" placeholder="Reason" aria-label="Reason">
+                                            <label class="form-label small mb-0" for="told{{ a.id }}">Interpreter told on</label>
+                                            <input class="form-control form-control-sm mb-1" type="date" id="told{{ a.id }}" name="communicated_on">
+                                            <button class="btn btn-sm btn-outline-danger" type="submit">Cancel assignment</button>
+                                        </form>
+                                    </details>
+                                    {% elif not a.cancellation_communicated_on %}
+                                    <details>
+                                        <summary><i class="bi bi-telephone"></i> Interpreter told...</summary>
+                                        <form method="post" action="{{ url_for('assignment_action', id=a.id, action='communicated') }}" class="mt-2">
+                                            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                                            <input class="form-control form-control-sm mb-1" type="date" name="communicated_on" required aria-label="Interpreter told on">
+                                            <button class="btn btn-sm btn-outline-primary" type="submit">Save</button>
+                                        </form>
+                                    </details>
+                                    {% endif %}
+                                </td>
+                                {% endif %}
+                            </tr>
+                        {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+                {% else %}
+                <p class="text-muted p-3 mb-0">No interpreter proposed yet.</p>
+                {% endif %}
+            </div>
+            {% if current_user.is_editor %}
+            <div class="card-footer">
+                {% if candidates %}
+                <form method="post" action="{{ url_for('assign_to_meeting', id=meeting.id) }}" class="row g-2">
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                    <div class="col-md-8">
+                        <select class="form-select form-select-sm" name="position_id" aria-label="Position" required>
+                            <option value="">Propose a booked interpreter...</option>
+                            {% for p in candidates %}
+                            <option value="{{ p.id }}">{{ p.booking.interpreter.priority_order }}. {{ p.label }} ({{ p.booking.slot.start_time|hhmm }}-{{ p.booking.slot.end_time|hhmm }}, {{ p.booking.status_display.lower() }}{% if p.interpreter_name %}, {{ p.interpreter_name }}{% endif %})</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div class="col-md-4"><button class="btn btn-sm btn-primary w-100" type="submit"><i class="bi bi-person-plus"></i> Propose</button></div>
+                </form>
+                {% else %}
+                <span class="text-muted small">No free booked interpreter fits this meeting. <a href="{{ url_for('bookings.add_booking') }}">Make a booking</a> for {{ meeting.date.isoformat() }}.</span>
+                {% endif %}
+            </div>
+            {% endif %}
+        </div>
+    </div>
+</div>
+
+<div class="row">
+    <div class="col-lg-6 mb-4">
+        <div class="card h-100">
+            <div class="card-header"><h6 class="mb-0"><i class="bi bi-clock-history"></i> History of this meeting</h6></div>
+            <div class="card-body p-0">
+                {% if changes %}
+                <div class="table-responsive"><table class="table table-sm mb-0">
+                    <thead><tr><th>When</th><th>By</th><th>What</th></tr></thead>
+                    <tbody>
+                    {% for c in changes %}
+                        <tr>
+                            <td class="text-nowrap">{{ c.recorded_at|brussels }}</td>
+                            <td>{{ c.changed_by }}{% if c.change_number %} <small class="text-muted">#{{ c.change_number }}</small>{% endif %}</td>
+                            <td>{{ c.kind|replace('_', ' ') }}{% if c.before and c.after %}:
+                                {% for field in c.after %}{{ field|replace('_', ' ') }} {{ c.before.get(field) if c.before.get(field) is not none else '-' }} &rarr; {{ c.after[field] if c.after[field] is not none else '-' }}{{ '; ' if not loop.last }}{% endfor %}
+                            {% endif %}</td>
+                        </tr>
+                    {% endfor %}
+                    </tbody>
+                </table></div>
+                {% else %}<p class="text-muted p-3 mb-0">No history yet.</p>{% endif %}
+            </div>
+        </div>
+    </div>
+    <div class="col-lg-6 mb-4">
+        <div class="card h-100">
+            <div class="card-header"><h6 class="mb-0"><i class="bi bi-journal-text"></i> Assignment log</h6></div>
+            <div class="card-body p-0">
+                {% if log %}{{ log_table(log) }}{% else %}<p class="text-muted p-3 mb-0">Nothing logged yet.</p>{% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

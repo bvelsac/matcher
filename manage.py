@@ -1,9 +1,10 @@
 #!/usr/bin/env python3
 """Setup and maintenance commands.
 
-    python manage.py init-db         create the database tables
+    python manage.py init-db         create the database, or bring it up to date (migrations)
+    python manage.py make-migration "text"   write a migration for a change in models.py
     python manage.py backup FILE     write a consistent copy of the database to FILE
-    python manage.py sample-data     add fictitious interpreters and meetings for testing
+    python manage.py sample-data     add fictitious interpreters, meetings and bookings for testing
 
 The database is chosen by APP_CONFIG and the settings in .env (see README.md). There are no
 accounts to create: people are identified by Authelia (auth.py).
@@ -12,16 +13,30 @@ import argparse
 import os
 import sqlite3
 import sys
-from datetime import date, time, timedelta
 
+import dbtools
+import sample_data as sample_data_module
 from app import app
 from extensions import db
-from models import Interpreter, Meeting, User
+from models import Interpreter, Meeting
+
+
+OLD_DATABASE = 3  # exit status of init-db for a database from before the migrations (.devcontainer/start.sh)
 
 
 def init_db(args):
-    db.create_all()
-    print("Database tables created (existing tables are left untouched).")
+    """Create the database, or bring an existing one to the newest version (migrations/)."""
+    try:
+        dbtools.upgrade(db.engine)
+    except dbtools.OldDatabase as error:
+        print(error, file=sys.stderr)
+        sys.exit(OLD_DATABASE)
+    print("Database is up to date.")
+
+
+def make_migration(args):
+    """Write a migration for the changes in models.py (the database must be at the newest version)."""
+    dbtools.make_migration(db.engine, args.message)
 
 
 def backup(args):
@@ -43,54 +58,23 @@ def backup(args):
 
 def sample_data(args):
     """Fictitious data only - never put real interpreters' details in a repository."""
-    owner = User.query.filter_by(username="sample-data").first()
-    if not owner:
-        owner = User(username="sample-data", name="Sample data")
-        db.session.add(owner)
-        db.session.flush()
-
-    if Interpreter.query.count() == 0:
-        people = [
-            ("Agence", "Alpha", "planning@alpha-bureau.example", "Bureau Alpha", "English, German"),
-            ("Bureau", "Beta", "contact@beta-bureau.example", "Bureau Beta", "English, Spanish"),
-            ("Anna", "Peeters", "anna.peeters@example.org", "", "English"),
-            ("Luc", "Dubois", "luc.dubois@example.org", "", "English, Italian"),
-            ("Sarah", "Janssens", "sarah.janssens@example.org", "", ""),
-        ]
-        for position, (first, last, email, bureau, languages) in enumerate(people, start=1):
-            db.session.add(Interpreter(
-                first_name=first,
-                last_name=last,
-                email=email,
-                bureau_affiliation=bureau,
-                priority_order=position,
-                additional_languages=languages,
-            ))
-        print("Added {} fictitious interpreters.".format(len(people)))
-
-    if Meeting.query.count() == 0:
-        monday = date.today() + timedelta(days=7 - date.today().weekday())
-        db.session.add_all([
-            Meeting(name="Uitgebreid Bureau / Bureau élargi", date=monday, time=time(12, 0),
-                    estimated_duration=2, interpreters_needed=1, location="Room 1",
-                    category="parliament", created_by=owner.id),
-            Meeting(name="Bureau", date=monday + timedelta(days=2), time=time(12, 15),
-                    estimated_duration=2, interpreters_needed=1, location="Room 1",
-                    category="parliament", created_by=owner.id),
-            Meeting(name="Committee hearing", date=monday + timedelta(days=3), time=time(9, 30),
-                    estimated_duration=3, interpreters_needed=3, location="Room 2",
-                    category="external_group", created_by=owner.id),
-        ])
-        print("Added 3 sample meetings for next week.")
-
+    if Meeting.query.count() or Interpreter.query.count():
+        print("The database already has interpreters or meetings: sample data goes into an empty one, nothing added.")
+        return
+    sample_data_module.load()
     db.session.commit()
+    print("Added fictitious interpreters, rooms, meetings (shaped like spic's export) and bookings.")
 
 
 def main():
     parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     commands = parser.add_subparsers(dest="command")
 
-    commands.add_parser("init-db", help="create the database tables").set_defaults(func=init_db)
+    commands.add_parser("init-db", help="create the database or bring it up to date").set_defaults(func=init_db)
+
+    p = commands.add_parser("make-migration", help="write a migration for a change in models.py")
+    p.add_argument("message")
+    p.set_defaults(func=make_migration)
 
     p = commands.add_parser("backup", help="copy the database to a new file")
     p.add_argument("file")

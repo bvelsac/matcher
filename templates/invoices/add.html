@@ -1,0 +1,43 @@
+{% extends "base.html" %}
+
+{% block title %}Record invoice - PDC{% endblock %}
+
+{% block body_class %}screen-invoice-form{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h1><i class="bi bi-receipt"></i> Record invoice</h1>
+    <a href="{{ url_for('invoices.list_invoices') }}" class="btn btn-secondary"><i class="bi bi-arrow-left"></i> Back to list</a>
+</div>
+<div class="row"><div class="col-md-8 mx-auto">
+    <div class="card">
+        <div class="card-header"><h5 class="mb-0"><i class="bi bi-receipt"></i> Invoice</h5></div>
+        <div class="card-body">
+            <p class="text-muted">Record the invoice once, then link all services it covers. Interpreters in occasional work send no invoice.</p>
+            <form method="POST">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                <div class="mb-3"><label for="interpreter_id" class="form-label">From *</label>
+                    <select class="form-select" id="interpreter_id" name="interpreter_id" required>
+                        <option value="">Choose...</option>
+                        {% for i in suppliers %}<option value="{{ i.id }}" {{ 'selected' if request.form.get('interpreter_id') == i.id|string }}>{{ i.display_name }}</option>{% endfor %}
+                    </select></div>
+                <div class="row">
+                    <div class="col-md-6 mb-3"><label for="reference" class="form-label">Reference</label>
+                        <input type="text" class="form-control" id="reference" name="reference" value="{{ request.form.get('reference', '') }}">
+                        <div class="form-text">The supplier's invoice number. Leave empty if it has none.</div></div>
+                    <div class="col-md-6 mb-3"><label for="received_on" class="form-label">Received on *</label>
+                        <input type="date" class="form-control" id="received_on" name="received_on" value="{{ request.form.get('received_on', '') }}" required></div>
+                </div>
+                <div class="mb-3"><label for="period" class="form-label">Period covered</label>
+                    <input type="text" class="form-control" id="period" name="period" value="{{ request.form.get('period', '') }}" placeholder="e.g. October 2026"></div>
+                <div class="mb-3"><label for="notes" class="form-label">Notes</label>
+                    <textarea class="form-control" id="notes" name="notes" rows="2">{{ request.form.get('notes', '') }}</textarea></div>
+                <div class="d-flex justify-content-between">
+                    <a href="{{ url_for('invoices.list_invoices') }}" class="btn btn-secondary"><i class="bi bi-x-circle"></i> Cancel</a>
+                    <button type="submit" class="btn btn-primary"><i class="bi bi-check-circle"></i> Record invoice</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div></div>
+{% endblock %}

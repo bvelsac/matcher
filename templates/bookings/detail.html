@@ -1,0 +1,101 @@
+{% extends "base.html" %}
+{% from "_macros.html" import booking_status, assignment_status, post_button, log_table, time_range %}
+
+{% block title %}Booking - PDC{% endblock %}
+
+{% block body_class %}screen-bookings{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4 flex-wrap gap-2">
+    <h1><i class="bi bi-bookmark-check"></i> Booking</h1>
+    <a href="{{ url_for('bookings.list_bookings') }}" class="btn btn-secondary"><i class="bi bi-arrow-left"></i> Back to list</a>
+</div>
+
+<div class="card mb-4">
+    <div class="card-header d-flex justify-content-between align-items-center">
+        <h5 class="mb-0"><i class="bi bi-person-badge"></i> {{ booking.interpreter.display_name }}</h5>
+        {{ booking_status(booking) }}
+    </div>
+    <div class="card-body">
+        <dl class="row mb-0">
+            <dt class="col-sm-3">Period</dt><dd class="col-sm-9">{{ booking.slot.label }}</dd>
+            <dt class="col-sm-3">Forfait</dt><dd class="col-sm-9">{{ booking.forfait_hours }} hours, overtime per half hour</dd>
+            <dt class="col-sm-3">Works</dt><dd class="col-sm-9">{{ booking.interpreter.engagement_display }}</dd>
+            {% if booking.booking_reason %}<dt class="col-sm-3">Reason</dt><dd class="col-sm-9">{{ booking.booking_reason }}</dd>{% endif %}
+            {% if booking.notes %}<dt class="col-sm-3">Notes</dt><dd class="col-sm-9">{{ booking.notes }}</dd>{% endif %}
+        </dl>
+    </div>
+    {% if current_user.is_editor and booking.status != 'cancelled' %}
+    <div class="card-footer d-flex gap-2 flex-wrap">
+        {% if booking.status == 'proposed' %}{{ post_button(url_for('bookings.booking_action', id=booking.id, action='confirm'), 'Confirm booking', 'btn-outline-success', 'check-circle') }}{% endif %}
+        {% if booking.status == 'confirmed' %}{{ post_button(url_for('bookings.booking_action', id=booking.id, action='complete'), 'Mark as completed', 'btn-outline-info', 'flag') }}{% endif %}
+        {% if booking.status in ('proposed', 'confirmed') and booking.interpreter.is_bureau %}{{ post_button(url_for('bookings.booking_action', id=booking.id, action='add-position'), 'Add a position', 'btn-outline-primary', 'plus-circle') }}{% endif %}
+        {% if booking.status != 'completed' %}{{ post_button(url_for('bookings.booking_action', id=booking.id, action='cancel'), 'Cancel booking', 'btn-outline-danger', 'x-circle', 'Cancel the booking? Its positions and their assignments are cancelled too.') }}{% endif %}
+    </div>
+    {% endif %}
+</div>
+
+<h4 class="mb-3">Positions</h4>
+{% for row in rows %}
+{% set p = row.position %}
+<div class="card mb-3 {{ 'opacity-50' if p.status == 'cancelled' }}">
+    <div class="card-header d-flex justify-content-between align-items-center">
+        <h6 class="mb-0">Interpreter {{ p.position_number }} of {{ booking.positions|length }}: {{ p.person }}
+            {% if p.status == 'cancelled' %}<span class="badge bg-danger">Cancelled</span>{% endif %}</h6>
+        {% if row.paid is not none %}<span class="badge bg-info" title="Forfait plus overtime">{{ row.paid }} h paid{% if row.overtime %} ({{ row.overtime }} half hour{{ 's' if row.overtime > 1 }} over){% endif %}</span>{% endif %}
+    </div>
+    <div class="card-body">
+        <div class="row g-3">
+            <div class="col-lg-6">
+                <strong>Meetings</strong>
+                {% if p.assignments %}
+                <ul class="list-unstyled mb-0">
+                    {% for a in p.assignments|sort(attribute='id') %}
+                    <li>{{ assignment_status(a) }}
+                        <a class="text-decoration-none" href="{{ url_for('meeting_detail', id=a.meeting_id) }}">{{ a.meeting.date.isoformat() }} {{ a.meeting.display_title }}</a>
+                        <small class="text-muted">{{ time_range(a.meeting) }}</small></li>
+                    {% endfor %}
+                </ul>
+                {% else %}<p class="text-muted mb-0">Not assigned to a meeting.</p>{% endif %}
+            </div>
+            <div class="col-lg-6">
+                {% if booking.interpreter.engagement == 'invoice' %}
+                <strong>Invoice</strong>:
+                {% if p.invoice %}<a class="text-decoration-none" href="{{ url_for('invoices.invoice_detail', id=p.invoice_id) }}">{{ p.invoice.label }}</a>
+                    {% if current_user.is_editor %}{{ post_button(url_for('bookings.position_action', id=p.id, action='unlink-invoice'), 'Unlink', 'btn-outline-secondary') }}{% endif %}
+                {% else %}<span class="text-muted">not received yet</span>{% endif %}
+                {% else %}
+                <strong>Dimona</strong>:
+                {% if p.dimona_declared %}declared
+                    {% if current_user.is_editor %}{{ post_button(url_for('bookings.position_action', id=p.id, action='undimona'), 'Withdraw', 'btn-outline-secondary') }}{% endif %}
+                {% else %}<span class="text-muted">not declared yet</span>
+                    {% if current_user.is_editor and p.status == 'active' %}{{ post_button(url_for('bookings.position_action', id=p.id, action='dimona'), 'Declared', 'btn-outline-success', 'check-circle') }}{% endif %}
+                {% endif %}
+                {% endif %}
+            </div>
+        </div>
+        {% if current_user.is_editor and p.status == 'active' %}
+        <hr>
+        <form method="post" action="{{ url_for('bookings.position_action', id=p.id, action='name') }}" class="row g-2 mb-2">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+            <div class="col-md-7"><input class="form-control form-control-sm" name="interpreter_name" value="{{ p.interpreter_name or '' }}" placeholder="The person sent" aria-label="The person sent"></div>
+            <div class="col-md-5"><button class="btn btn-sm btn-outline-primary" type="submit">Save name</button></div>
+        </form>
+        <form method="post" action="{{ url_for('bookings.position_action', id=p.id, action='hours') }}" class="row g-2 mb-2">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+            <div class="col-md-4"><input class="form-control form-control-sm" type="datetime-local" name="actual_start_time" value="{{ p.actual_start_time.strftime('%Y-%m-%dT%H:%M') if p.actual_start_time else '' }}" aria-label="Actual start"></div>
+            <div class="col-md-4"><input class="form-control form-control-sm" type="datetime-local" name="actual_end_time" value="{{ p.actual_end_time.strftime('%Y-%m-%dT%H:%M') if p.actual_end_time else '' }}" aria-label="Actual end"></div>
+            <div class="col-md-4"><button class="btn btn-sm btn-outline-primary" type="submit">Save hours</button></div>
+        </form>
+        {{ post_button(url_for('bookings.position_action', id=p.id, action='cancel'), 'Cancel position', 'btn-outline-danger', 'x-circle', 'Cancel this position and its assignments?') }}
+        {% endif %}
+        {% if p.notes %}<p class="text-muted small mt-2 mb-0" style="white-space: pre-line">{{ p.notes }}</p>{% endif %}
+    </div>
+</div>
+{% endfor %}
+
+<div class="card mb-4">
+    <div class="card-header"><h6 class="mb-0"><i class="bi bi-journal-text"></i> Log of this booking</h6></div>
+    <div class="card-body p-0">{{ log_table(log) }}</div>
+</div>
+{% endblock %}

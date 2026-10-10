@@ -16,8 +16,8 @@
 
 ### Backend Stack
 - **Framework**: Flask (Python 3.12, like spic) with SQLAlchemy ORM
-- **Database**: MySQL 8.0.40
-- **Authentication**: Flask-Login for session management
+- **Database**: SQLite in WAL mode (migrations with Alembic)
+- **Authentication**: identity from Authelia (Flask-Login without sessions); rights from spic later
 - **CSV Processing**: Python `csv` module
 - **HTTP Requests**: requests library for CSV fetching
 
@@ -84,9 +84,10 @@ the functional analysis 1.2. Comes before Phase 2, or alongside it.
    login through Authelia (rights from spic once spic provides the list). Done 10 October 2026,
    except migrations (with the new model, step 3) and the nightly back-up on the server
 3. New meeting model: copy of spic meetings and own meetings in one table, history of the copy,
-   append-only assignment log, the two work lists; test data shaped like spic's export.
-   No link with spic yet
-4. The workbench for the planner
+   append-only assignment log, the work lists; test data shaped like spic's export. No link with
+   spic yet. **Done 10 October 2026**, including migrations, bookings, positions, assignments,
+   forfaits and overtime, invoices and Dimona (the part of Phases 2 to 4 that the model needs)
+4. The workbench for the planner (next)
 5. The link: `GET /api/export?sinds=N` on spic's side (built in `crystalclear`), the update in
    PDC when a screen opens and by a background task, the nightly full comparison
 6. Last: spic's write route for start time, room and cancellation
@@ -129,8 +130,8 @@ open point 14).
   - Change interpreter assignments
   - Assign interpreters not in availability data
   - Handle conflicts and warnings
-- System locking during assignment work (Phase 1 has it; the decisions on PDC conflict with it,
-  proposal: drop it, see [pdc-voorstel.md](pdc-voorstel.md) §4)
+- No system locking (decided 10 October 2026): every action is a small transaction that checks the
+  state when it saves, see [pdc-voorstel.md](pdc-voorstel.md) §4
 - Status tracking (proposed → confirmed → completed)
 
 **Deliverable**: Complete assignment workflow
@@ -193,8 +194,8 @@ def suggest(slot, needed):
 ## Deployment Strategy
 
 - Local development with the Flask development server and SQLite
-- Test server (Phase 1): Docker on the infracriv platform, with its own MySQL 8.0.40 container
-  (`docker-compose.yml`)
+- Test server (Phase 1): Docker on the infracriv platform, one container with the SQLite database on
+  a volume (`docker-compose.yml`)
 - Production (PDC): on the same server and in the same environment as spic. Proposals, not yet
   decided: its own compose project on the `infracriv` network with its own version and tag,
   deployed through GitHub Actions; a token for spic's export and write route; SQLite in a volume

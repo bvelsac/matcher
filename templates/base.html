@@ -63,6 +63,21 @@
                             <i class="bi bi-calendar-event"></i> Meetings
                         </a>
                     </li>
+                    <li class="nav-item">
+                        <a class="nav-link {% if 'booking' in ep or 'position' in ep %}active{% endif %}" href="{{ url_for('bookings.list_bookings') }}">
+                            <i class="bi bi-bookmark-check"></i> Bookings
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link {% if 'invoice' in ep %}active{% endif %}" href="{{ url_for('invoices.list_invoices') }}">
+                            <i class="bi bi-receipt"></i> Invoices
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link {% if ep == 'worklists' %}active{% endif %}" href="{{ url_for('worklists') }}">
+                            <i class="bi bi-list-check"></i> Work lists
+                        </a>
+                    </li>
                 </ul>
             </div>
 
@@ -81,6 +96,17 @@
                 {% endwith %}
 
                 {% block content %}{% endblock %}
+
+                {% if current_user.is_authenticated %}
+                <p class="text-muted small mt-4 sync-line">
+                    <i class="bi bi-arrow-repeat"></i>
+                    {% if sync and sync.last_success_at %}
+                    Copy of spic updated to change {{ sync.last_change_number }} at {{ sync.last_success_at|brussels('%H:%M on %Y-%m-%d') }}.
+                    {% else %}
+                    Not connected to spic yet: the meetings shown are test data and meetings entered in PDC.
+                    {% endif %}
+                </p>
+                {% endif %}
 
     {% if current_user.is_authenticated %}
             </div>

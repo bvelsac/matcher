@@ -33,6 +33,10 @@ nieuwe documentatie "PDC".
   spic (vergaderingen en rechten).
 - De databank is SQLite in WAL-modus (beslist en gebouwd op 10 oktober 2026). Aanmelden gaat via de koppen van Authelia;
   tests melden aan met `login(client, gebruiker)` uit `tests/conftest.py`.
+- Een wijziging aan `models.py` komt in dezelfde commit met een migratie (`python manage.py make-migration "tekst"`,
+  zie README); `tests/test_migrations.py` bewaakt dat ze samen kloppen. De regels van de planner staan in `planning.py`,
+  de kopie van spic in `spic_copy.py`; het logboek (`assignment_log`) en de historiek (`meeting_changes`) zijn alleen
+  aanvullend: nooit wijzigen of wissen, wel een nieuwe regel toevoegen.
 
 ## Uitrollen
 

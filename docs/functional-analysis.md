@@ -20,7 +20,9 @@
 > spreadsheet for 2026-2027: invoices (new 2.9), invoice or occasional work (Dimona) per interpreter, the forfait of a
 > booking, when a cancellation was passed on to the interpreter, and a default number of
 > interpreters per meeting (9, point 17); and the instructions for booking of September 2026
-> (4.5).
+> (4.5). Built on 10 October 2026 (step 3 of Phase 1b, without the link to spic): everything in 1 and
+> 2 except availabilities, CSV sources and the write route to spic; the choices made while building it
+> that the user has not confirmed yet are in 9, point 18.
 >
 > **1.1:** a booking is now a bucket of positions, one per interpreter, so that the
 > interpreters of one bureau booking can each be dispatched to meetings independently
@@ -1258,7 +1260,7 @@ Not yet covered by this analysis:
 8. **BR-SRC-003** says "no overlap constraint", which contradicts the rule that the same meeting in two forms is a logical error and must be flagged.
 9. **Meeting fields** (answered in 1.2): spic gives a start time (or "after another meeting", without a time), an optional entered end, and an estimated duration from the agenda or the meeting type; effective start and end can be empty; the period (AM/PM) is always present. Own meetings have a start plus an end or a duration (2.7). Still to confirm: how checks work when a time is missing (proposal in 2.7).
 10. **Section 7.4**: the figures "8-10 hours per cycle" and "10-15% errors" are assumptions, not measured values. To be removed or replaced with real figures.
-11. **Database** (decided and built 10 October 2026): **SQLite**, in WAL mode, like spic, with `manage.py backup`. The MySQL test data were fictitious and are not kept. The model of the copy and the assignment log is in `docs/pdc-voorstel.md` §2.
+11. **Database** (decided and built 10 October 2026): **SQLite**, in WAL mode, like spic, with `manage.py backup` and migrations (Alembic). The MySQL test data were fictitious and are not kept. The model of the copy and the assignment log is in `docs/pdc-voorstel.md` §2.
 12. **Category of a spic meeting**: PDC's categories must be derived from spic's domain, assembly and type. Not designed yet; Phase 1's four categories (Parliament, affiliated organization, external group, special event) remain for own meetings until then.
 13. **Events and coordinators**: spic also has events (blocks with an ID starting with `e-`, without a report) and a coordinator per day. Whether PDC needs them has not been discussed.
 14. **Own response form for the interpreters** (idea, nothing decided): like Google Forms now, but PDC's own. One link per round with a long, unguessable code, which the planner sends out by email; the interpreter identifies with their email address or ID; only known interpreters are accepted; a new answer from the same interpreter replaces the previous one until the closing date. **No email from the system** (no mail server or service): the planner can copy "all addresses" and "addresses of those who did not answer yet" into their own mail program. Answers go straight into the database, so the CSV import (2.8, 5.1) would disappear. Still to settle: a public route in `CAL` (only `/antwoord/...`, the rest stays behind Authelia; `CAL` is changed only when the user explicitly asks), protection against abuse, and whether interpreters outside the building can reach the server from the internet.
@@ -1274,3 +1276,15 @@ Not yet covered by this analysis:
     - A memo sheet holds a request from another department of the Parliament for interpreters at an event it organises, at the Parliament's expense (1.5).
 
     Answered by the user (10 October 2026): "ok" is taken to mean received and checked, for now (2.9); the spreadsheet is **not imported**, the team retypes what is needed in PDC.
+
+18. **Choices made while building step 3** (10 October 2026), not yet confirmed by the user. They are in the code and in `docs/pdc-voorstel.md`; each can be changed:
+    - *Time of day of an own meeting*: morning (AM) when it starts before 12:00, otherwise afternoon (PM). spic's rule is not known.
+    - *A meeting must fit the booking* (BR-ASGN-001), implemented strictly: it starts inside the booking's time slot and its expected end is not after the end of the slot. A meeting whose time is not (fully) known is accepted and flagged. A meeting that runs over is not an issue for this check, because the overrun is paid as overtime (BR-BKG-009).
+    - *Default number of interpreters*: 3 for a meeting of type "plenary", 2 for every other type (2.7). The codes of the types in spic are a guess (`PLENARY_TYPES` in `spic_copy.py`).
+    - *Overtime* (BR-BKG-009, BR-MTG-011): a position's overtime counts from the start of its earliest meeting (or the start recorded for the position) to the latest real end of its meetings (or the end recorded for the position), against the booking's forfait; every half hour that has started counts. A meeting's implied half hours are the highest over its assignments, from the meeting's own start and real end; a difference with the half hours charged is flagged.
+    - *Work lists*: "invoice not received yet" and "Dimona to declare" list the active positions of **completed** bookings. A booking is completed by the planner, who has to fill in the name of the person sent for every position first (BR-POS-006). A position that is cancelled never appears.
+    - *Assignments*: a cancelled assignment that is proposed again comes back as the same assignment (BR-ASGN-006: one assignment per position and meeting), with its history in the log. An assignment is confirmed only on a confirmed booking (BR-ASGN-005); a cancelled or deleted meeting, or a meeting of a week back in concept, gets no new assignment.
+    - *Bookings*: an individual interpreter has exactly one position, and only a bureau can get extra positions (BR-BKG-002, BR-BKG-007). Availability declarations are not built yet, so BR-BKG-001 (no more than declared) is not checked.
+    - *Invoices*: only interpreters who work on invoice can have an invoice; the invoice is linked to positions of confirmed or completed bookings of the same supplier. An interpreter who has bookings or invoices cannot be deleted.
+    - *History of an own meeting*: its history stays when the meeting is deleted (BR-MTG-006), with a last line "deleted" that holds the final state.
+    - *The export of spic* does not exist yet. The shape of an item (field names after spic's table, values of status, week status and start kind) is an assumption in `spic_copy.py`; to be agreed with the spic session before the link is built (`docs/pdc-voorstel.md` §6).
