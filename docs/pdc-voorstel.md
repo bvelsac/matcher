@@ -1,12 +1,22 @@
-# PDC: afwijkingen van het prototype en voorstellen
+# PDC: afwijkingen van het prototype en ontwerp
 
-Stand: 10 oktober 2026. De besluiten staan in `docs/functional-analysis.md` (versie 1.2) en, als bron, in
-`docs/stand-van-zaken.md` van `bvelsac/crystalclear`. Dit document zegt **wat er in de code van fase 1 afwijkt** van
-die besluiten, en doet **voorstellen** waarover de gebruiker nog moet beslissen: het model van de eigen kopie van de
-vergaderingen, de databank, de vergrendeling en de aanmelding. Er is nog niets aan de koppeling met spic gebouwd.
+Stand: 10 oktober 2026. De besluiten staan in `docs/functional-analysis.md` (versie 1.2) en, voor de koppeling met spic,
+in `docs/stand-van-zaken.md` van `bvelsac/crystalclear`. Dit document zegt **wat er in de code van fase 1 afwijkt** van
+die besluiten, beschrijft **het model van de eigen kopie** van de vergaderingen en zegt wat de beslissingen van
+10 oktober 2026 (databank, vergrendeling, aanmelding, taal) in de code vragen. Er is nog niets aan de koppeling met spic
+gebouwd.
 
-Een beslissing over een voorstel komt in de FA (en in `stand-van-zaken.md` van `crystalclear` als ze de koppeling
-raakt); daarna verdwijnt het voorstel hier.
+**Beslissingen van de gebruiker op 10 oktober 2026** (over de voorstellen die hier stonden):
+
+1. **Databank: SQLite.** Er zijn nog geen gegevens in het prototype.
+2. **Model van de kopie:** vrij te kiezen; de twee toepassingen hebben hoe dan ook elk een eigen databank. Het model in §2
+   is dus het ontwerp.
+3. **De vergrendeling vervalt**, op voorwaarde dat de controle bij het opslaan geen grote vertraging geeft (dat doet ze
+   niet: één of twee opzoekingen op een index binnen dezelfde transactie, enkele milliseconden).
+4. **Aanmelding met Authelia, rechten zoals in spic.** PDC hangt daarmee **uitdrukkelijk af** van Authelia (identiteit) en
+   van spic (de lijst van invoerders en beheerders).
+5. **Taal van de code: Engels.** Een afspraak over Nederlands in de code is er nooit uitdrukkelijk geweest; dat is in
+   `crystalclear` toevallig zo gegroeid.
 
 ## 1. Wat in het prototype afwijkt van wat besloten is
 
@@ -22,22 +32,22 @@ raakt); daarna verdwijnt het voorstel hier.
 | 8 | Logboek en historiek | Geen. Alleen `created_by`, `created_at`, `updated_at` | Een eigen, alleen aanvullend logboek met een momentopname van de vergadering bij elke toewijzing; een historiek van de kopie; twee werklijsten (§1.6) | Nieuwe tabellen (§2) |
 | 9 | Annuleren | Geen annulering; FA 1.1 annuleerde de toewijzingen automatisch | Een annulering wist of annuleert nooit een toewijzing; de planner beslist (§5.4) | Werklijst "geannuleerd met toegewezen tolk" |
 | 10 | Bijwerken en achtergrondtaak | Alleen gunicorn, geen achtergrondtaak | Bijwerken bij gebruik én door een achtergrondtaak, met een slot en een nachtelijke vergelijking (§1.3) | Een tweede proces nodig; nog niet bouwen |
-| 11 | Vergrendeling | Het hele systeem 4 uur op slot terwijl één editor toewijst | Beginuur, zaal en annulering direct en zonder vergrendeling, ook door een ander (§1.4) | Voorstel: de vergrendeling vervalt (§4) |
-| 12 | Aanmelding en rollen | Eigen accounts met wachtwoord (editor, viewer), na de aanmelding bij Authelia | Alle invoerders en beheerders van spic mogen PDC beheren, geen aparte rol; de naam van de persoon gaat mee naar de schrijfroute | Voorstel: identiteit van Authelia, rechten zoals in spic (§5) |
+| 11 | Vergrendeling | Het hele systeem 4 uur op slot terwijl één editor toewijst | Beginuur, zaal en annulering direct en zonder vergrendeling, ook door een ander (§1.4) | Besloten: de vergrendeling vervalt (§4) |
+| 12 | Aanmelding en rollen | Eigen accounts met wachtwoord (editor, viewer), na de aanmelding bij Authelia | Alle invoerders en beheerders van spic mogen PDC beheren, geen aparte rol; de naam van de persoon gaat mee naar de schrijfroute | Besloten: identiteit van Authelia, rechten uit spic (§5) |
 | 13 | Naam | "Interpreter Management" in de schermen, "Interpreter Mission Management System" in de code en de documenten; `matcher` als repository, compose-project, image (`ghcr.io/bvelsac/matcher`), volume (`matcher_db`) en subdomein (`matcher.infracriv.net`) | PDC, Prestatiedatabank voor Conferentietolken | Schermen en documenten hernoemen. De namen op het platform (repository, image, volume, subdomein) zijn de keuze van de gebruiker; `CAL` alleen op uitdrukkelijke vraag |
-| 14 | Databank | MySQL 8.0.40 in een eigen container | Open; spic gebruikt SQLite | Voorstel: SQLite (§3) |
+| 14 | Databank | MySQL 8.0.40 in een eigen container | SQLite (besloten op 10 oktober 2026) | Overstappen (§3) |
 | 15 | Python | Vastgezet op 3.8, "dezelfde versie als de productieserver" | PDC draait in Docker op dezelfde server als spic; spic gebruikt Python 3.12. Python 3.8 krijgt sinds oktober 2024 geen veiligheidsupdates meer | Naar Python 3.12 (image en vastgezette versies) |
 | 16 | Uitrol | `git pull` en `docker compose up -d --build` op de server, image met tag `latest` | Eigen compose-project met eigen versie en tag; uitrollen via GitHub Actions; een sessie verbindt nooit zelf met de server | Een workflow en versienummers, zoals `spic.yml` in `crystalclear`. In `CAL` is er nog geen route voor `matcher` of PDC (alleen `jk`, `spic` en `um`), en de README noemt een DNS-record bij Cloudflare: beide alleen op uitdrukkelijke vraag van de gebruiker |
 | 17 | Tijden | Opgeslagen en getoond in UTC (de vergrendeling toont "UTC") | Tijden van spic zijn Brusselse tijd | Vergaderingen in Brusselse tijd zoals spic; tijdstippen van het logboek bewaren in UTC en tonen in Brusselse tijd |
 | 18 | Afspraken | Geen `CLAUDE.md` | Een `CLAUDE.md` met de afspraken en de naam PDC | Gemaakt op 10 oktober 2026 |
-| 19 | Taal | Code, commentaar en FA in het Engels | Afspraak uit `crystalclear`: code, commentaar en commitberichten in het Nederlands | Vraag aan de gebruiker (§7) |
+| 19 | Taal | Code, commentaar en FA in het Engels | Code, commentaar en commitberichten in het Engels (besloten op 10 oktober 2026) | Geen; de code blijft Engels (§7) |
 | 20 | Tests | Tests met de testclient, geen browsertests | Een wijziging aan een pagina krijgt een browsertest | Browsertests (Playwright) toevoegen met de werkbank |
 
 Wat **niet** afwijkt en blijft: de tolken en bureaus met de wettelijke prioriteitsvolgorde, de beschikbaarheden die
 voorlopig via Google Forms (CSV) komen, het model van boekingen, posities en toewijzingen uit de FA, CSRF-bescherming,
 en voorbeeldgegevens met verzonnen namen.
 
-## 2. Voorstel: het model van de eigen kopie
+## 2. Ontwerp: het model van de eigen kopie
 
 **Eén tabel voor alle vergaderingen**, spic en eigen, zodat de toewijzingen naar één tabel verwijzen en de planner één
 lijst ziet. De velden die PDC opzoekt of toont, krijgen een eigen kolom; **de volledige laatste toestand uit spic gaat
@@ -107,7 +117,7 @@ bijwerking haar beurt over.
 `rooms`: kopie van de vaste lijst zalen van spic (`code`, `description`, `active`). `user_visits`: per gebruiker het
 tijdstip van het laatste bezoek, voor "gewijzigd sinds je laatste bezoek".
 
-### Keuzes in dit voorstel
+### Keuzes in dit ontwerp
 
 - Een week die terug naar concept gaat: de vergaderingen worden **verborgen, niet gewist** (ze kunnen toewijzingen
   hebben), en wie toewijzingen heeft, komt op de werklijst.
@@ -115,9 +125,9 @@ tijdstip van het laatste bezoek, voor "gewijzigd sinds je laatste bezoek".
   onbekend" (FA §2.7).
 - Testgegevens voor de werkbank in de vorm van de export van spic, zodat de koppeling later alleen de bron vervangt.
 
-## 3. Voorstel: de databank wordt SQLite
+## 3. Besloten: de databank wordt SQLite
 
-**Advies: SQLite**, in WAL-modus, zoals spic.
+**SQLite**, in WAL-modus, zoals spic. De redenen:
 
 - **Hetzelfde als spic** op dezelfde server: dezelfde manier van back-up (de back-upfunctie van SQLite, die een
   consistente kopie maakt terwijl de toepassing draait), dezelfde kennis en dezelfde werkwijze voor migraties.
@@ -128,8 +138,8 @@ tijdstip van het laatste bezoek, voor "gewijzigd sinds je laatste bezoek".
 - **Getest zoals het draait:** de tests draaien nu al op SQLite, de productie op MySQL; verschillen (bijvoorbeeld de
   Enum-kolommen) worden nu niet getest.
 - **De regels van het logboek** (alleen aanvullend) kunnen in SQLite met triggers worden afgedwongen.
-- **Nu is overstappen goedkoop:** het prototype heeft geen echte gegevens van belang (voorbeeldgegevens op de testserver;
-  te bevestigen door de gebruiker).
+- **Nu is overstappen goedkoop:** het prototype heeft geen echte gegevens van belang (bevestigd door de gebruiker op
+  10 oktober 2026).
 
 MySQL zou pas nodig zijn bij veel gelijktijdige schrijvers, een aparte databankserver of rapportering die over het
 netwerk verbindt; dat is niet het geval. De tweede toepassing voor andere freelancers krijgt hoe dan ook een eigen
@@ -141,7 +151,7 @@ PyMySQL uit `docker-compose.yml` en `requirements.txt`; een migratiehulpmiddel, 
 nieuwe tabellen en het model gaat veranderen (voorstel: Alembic via Flask-Migrate; alternatief: genummerde SQL-bestanden
 zoals spic); een nachtelijke back-up naar een plaats buiten het volume.
 
-## 4. Voorstel: de vergrendeling vervalt
+## 4. Besloten: de vergrendeling vervalt
 
 De vergrendeling van het hele systeem (fase 1) botst met de besluiten en verdwijnt. In de plaats:
 
@@ -152,14 +162,15 @@ De vergrendeling van het hele systeem (fase 1) botst met de besluiten en verdwij
   hetzelfde ogenblik dezelfde positie of vergadering wijzigen.
 - Wie wat deed, staat in het logboek.
 
-## 5. Voorstel: aanmelding met Authelia, rechten zoals in spic
+## 5. Besloten: aanmelding met Authelia, rechten uit spic
 
 - PDC neemt de identiteit over van Authelia (de koppen `Remote-User`, `Remote-Name`, `Remote-Groups`, alleen
   vertrouwd omdat de container alleen via Caddy bereikbaar is), zoals spic. De eigen accounts en wachtwoorden vervallen;
   voor ontwikkeling een dev-modus zoals `OB_AUTH_MODUS=dev` in spic.
 - Rechten: wie in spic invoerder of beheerder is, mag PDC beheren (besloten). spic houdt die lijsten in zijn
-  beheerscherm bij, niet in lldap. Voorstel: spic geeft die lijst mee via een route met het token van PDC (een
-  aanvulling op het contract, §6). Alternatief: een groep in lldap die met de hand gelijk gehouden wordt.
+  beheerscherm bij, niet in lldap. spic geeft die lijst daarom aan PDC via een route met het token van PDC (een
+  aanvulling op het contract, §6). PDC hangt dus uitdrukkelijk af van Authelia en van spic. Zolang die route niet
+  bestaat, kan PDC de rechten niet uit spic halen; wat PDC dan doet (bijvoorbeeld alleen lezen), is nog te bepalen.
 - Lezers: wie in spic alleen leest, mag PDC lezen (te bevestigen).
 - De naam van de persoon gaat mee bij elke schrijfactie naar spic ("via PDC").
 
@@ -174,17 +185,16 @@ De vergrendeling van het hele systeem (fase 1) botst met de besluiten en verdwij
   (9 okt 2026): ... een schrijfroute van spic", terwijl de beslissingen van 10 oktober en FA Opnamebeheer §13.2 van een
   schrijfroute uitgaan. Graag rechtzetten aan die kant.
 
-## 7. Vraag: de taal van de code
+## 7. Besloten: de code blijft Engels
 
-De afspraak uit `crystalclear` is code, commentaar en commitberichten in het Nederlands. Het prototype en de FA zijn in
-het Engels. Mogelijkheden: (a) de bestaande code en de FA blijven Engels, nieuwe documentatie en commitberichten worden
-Nederlands; (b) bij het vervangen van het vergadermodel gaat de code naar het Nederlands (de veldnamen van spic kunnen
-dan ongewijzigd mee), en de FA volgt later. `CLAUDE.md` houdt de vraag open tot de gebruiker kiest.
+Code, commentaar en commitberichten in het Engels, zoals het prototype en de FA. Notities voor de gebruiker, zoals dit
+document, mogen Nederlands zijn.
 
 ## 8. Voorgestelde volgorde
 
-1. De gebruiker beslist over §3 (databank), §4 (vergrendeling), §5 (aanmelding) en §7 (taal).
-2. Overstap naar SQLite, met migraties en een back-up.
+1. ~~De gebruiker beslist over §3 (databank), §4 (vergrendeling), §5 (aanmelding) en §7 (taal).~~ Gedaan op 10 oktober 2026.
+2. Overstap naar SQLite, met migraties en een back-up; de vergrendeling eruit; aanmelding met Authelia (de rechten pas
+   als spic de lijst geeft).
 3. Het nieuwe vergadermodel, het logboek en de eigen vergaderingen, met testgegevens in de vorm van de export van spic;
    daarna de werkbank. Intussen bouwt de spic-sessie de export (alleen lezen, dus veilig).
 4. De koppeling in PDC: bijwerken bij gebruik, de achtergrondtaak, de nachtelijke vergelijking.

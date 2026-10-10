@@ -78,8 +78,10 @@ from spic (Phase 1b).
 the functional analysis 1.2. Comes before Phase 2, or alongside it.
 
 **Steps** (proposed order, see [pdc-voorstel.md](pdc-voorstel.md) §8):
-1. Decisions on the database, the editing lock, the login and the language of the code
-2. Database switch (proposal: SQLite, like spic), with migrations and a nightly back-up
+1. Decisions on the database, the editing lock, the login and the language of the code (taken
+   10 October 2026: SQLite, no lock, Authelia with rights from spic, code in English)
+2. Database switch to SQLite, with migrations and a nightly back-up; remove the editing lock;
+   login through Authelia (rights from spic once spic provides the list)
 3. New meeting model: copy of spic meetings and own meetings in one table, history of the copy,
    append-only assignment log, the two work lists; test data shaped like spic's export.
    No link with spic yet

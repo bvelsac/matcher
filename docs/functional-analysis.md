@@ -14,7 +14,9 @@
 > `docs/stand-van-zaken.md` of the repository `bvelsac/crystalclear`; the spic side of the
 > contract is in FA Opnamebeheer §13.2 of that repository (`docs/FA_opnamebeheer_v1.2.md`, where
 > spic is still called Banaan). This document describes PDC; the contract with spic is
-> described there.
+> described there. Decisions of the user on 10 October 2026, after the proposals in
+> `docs/pdc-voorstel.md`: SQLite as database, no editing lock, login through Authelia with the
+> rights taken from spic, code in English (9, points 3 and 11).
 >
 > **1.1:** a booking is now a bucket of positions, one per interpreter, so that the
 > interpreters of one bureau booking can each be dispatched to meetings independently
@@ -60,7 +62,8 @@ Later a similar application will follow for another category of freelancers, als
   - PDC calls spic **inside that network** (`http://spic:8000/...`), not through Caddy and Authelia, with **its own token** (from `.env`, never in a repository). spic trusts the Authelia headers only when they come through Caddy, so only trusted containers may join that network.
   - People reach PDC like spic: a route in the Caddyfile and a rule in Authelia, in `CAL` (repository `infracriv`). That is changed only when the user explicitly asks for it.
   - PDC needs a **nightly back-up** of its own: assignments cannot be recovered from spic.
-- Which database engine PDC uses (SQLite like spic, or MySQL as in the Phase 1 prototype) is an open point (9, point 11).
+- PDC uses **SQLite**, like spic (decided 10 October 2026; 9, point 11).
+- PDC **depends explicitly** on Authelia for the identity of its users and on spic for their rights (9, point 3).
 
 ### 1.3 Keeping the copy up to date
 
@@ -1164,8 +1167,8 @@ Not yet covered by this analysis:
 1. **Confirmations**: the text per interpreter for a chosen period (default: a week starting Monday). Only mentioned in passing in scenario 6.1.
 2. **Weekly overview for HR and monthly overview of prestations per interpreter**: referred to, not defined.
 3. **Users, roles and the editing lock**:
-   - *Editing lock.* Phase 1 locks the whole system for 4 hours while one editor dispatches. That **conflicts with the decisions**: start time, room and cancellation must be possible at once, without a lock, also by another user (1.4); spic has no hard lock either, only merging per field when saving. To be decided whether the lock stays, becomes smaller or goes. Proposal: drop it (`docs/pdc-voorstel.md`).
-   - *Roles.* Decided: everyone who enters data in spic or administers it (invoerders and beheerders) may manage PDC; there is no separate PDC role. Phase 1 has its own accounts (editor and viewer) with a password, after the Authelia login. Open: keep own accounts, or take over the Authelia identity and spic's roles. For "via PDC" in spic's history, the name of the person must go with every write (1.4). Proposal in `docs/pdc-voorstel.md`.
+   - *Editing lock* (decided 10 October 2026): **the editing lock goes.** Phase 1 locks the whole system for 4 hours while one editor dispatches, which conflicts with 1.4 (start time, room and cancellation at once, without a lock, also by another user). Instead, every action is one small transaction that checks, when saving, that the state still holds (the position is still free, the meeting still exists); if not, the user gets a clear message and the new state (then, now, your input). Conflicts only arise when two planners change the same position or meeting at the same moment, and the assignment log shows who did what.
+   - *Login and roles* (decided 10 October 2026): PDC takes over the **identity from Authelia** (the headers `Remote-User`, `Remote-Name`, `Remote-Groups`, trusted only because the container is reachable only through Caddy), like spic; the own accounts and passwords of Phase 1 go. Everyone who enters data in spic or administers it (invoerders and beheerders) may manage PDC; there is no separate PDC role. spic keeps those lists in its administration screen, so spic gives them to PDC through a route with PDC's token (an addition to the contract). **PDC depends explicitly on Authelia and on spic.** What PDC does while that route does not exist yet is still to be decided. The name of the person goes with every write to spic ("via PDC", 1.4).
 4. **Interpreter portal**: interpreters enter their own start and end times; the team lead validates them. Positions hold the times, but the entry and validation step is missing.
 5. **Real duration of the meeting itself**: keep the initial estimate and record the real length of the meeting. Only the individual interpreters' hours are covered.
 6. **Interpreter becomes unavailable**: suggest the next interpreter in the priority list and record the communicated change. Only covered implicitly.
@@ -1173,7 +1176,7 @@ Not yet covered by this analysis:
 8. **BR-SRC-003** says "no overlap constraint", which contradicts the rule that the same meeting in two forms is a logical error and must be flagged.
 9. **Meeting fields** (answered in 1.2): spic gives a start time (or "after another meeting", without a time), an optional entered end, and an estimated duration from the agenda or the meeting type; effective start and end can be empty; the period (AM/PM) is always present. Own meetings have a start plus an end or a duration (2.7). Still to confirm: how checks work when a time is missing (proposal in 2.7).
 10. **Section 7.4**: the figures "8-10 hours per cycle" and "10-15% errors" are assumptions, not measured values. To be removed or replaced with real figures.
-11. **Database**: Phase 1 uses MySQL; spic uses SQLite. Proposal: SQLite (`docs/pdc-voorstel.md`), together with the model of the copy of the spic meetings and the assignment log.
+11. **Database** (decided 10 October 2026): **SQLite**, in WAL mode, like spic. Phase 1 still uses MySQL; there is no data to keep. The model of the copy and the assignment log is in `docs/pdc-voorstel.md` §2.
 12. **Category of a spic meeting**: PDC's categories must be derived from spic's domain, assembly and type. Not designed yet; Phase 1's four categories (Parliament, affiliated organization, external group, special event) remain for own meetings until then.
 13. **Events and coordinators**: spic also has events (blocks with an ID starting with `e-`, without a report) and a coordinator per day. Whether PDC needs them has not been discussed.
 14. **Own response form for the interpreters** (idea, nothing decided): like Google Forms now, but PDC's own. One link per round with a long, unguessable code, which the planner sends out by email; the interpreter identifies with their email address or ID; only known interpreters are accepted; a new answer from the same interpreter replaces the previous one until the closing date. **No email from the system** (no mail server or service): the planner can copy "all addresses" and "addresses of those who did not answer yet" into their own mail program. Answers go straight into the database, so the CSV import (2.8, 5.1) would disappear. Still to settle: a public route in `CAL` (only `/antwoord/...`, the rest stays behind Authelia; `CAL` is changed only when the user explicitly asks), protection against abuse, and whether interpreters outside the building can reach the server from the internet.

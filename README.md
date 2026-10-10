@@ -34,9 +34,10 @@ functional analysis. See [docs/development-plan.md](docs/development-plan.md) fo
 **Phase 1 is a prototype and test server, not yet PDC as decided.** In production PDC will run
 on the same server and in the same environment as spic. The prototype still has meetings
 entered by hand, MySQL, its own accounts and a system-wide editing lock. What differs from the
-decisions, and the proposals for the copy of the spic meetings, the database, the lock and the
-login, are in [docs/pdc-voorstel.md](docs/pdc-voorstel.md). Nothing has been built yet for the
-link with spic.
+decisions, and the design of the copy of the spic meetings, are in
+[docs/pdc-voorstel.md](docs/pdc-voorstel.md). Decided on 10 October 2026: SQLite instead of
+MySQL, no editing lock, login through Authelia with the rights taken from spic. Nothing has been
+built yet for the link with spic.
 
 ## Layout
 

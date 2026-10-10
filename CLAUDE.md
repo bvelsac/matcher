@@ -17,8 +17,9 @@ nieuwe documentatie "PDC".
 
 ## Werkwijze
 
-- Commitberichten en nieuwe documentatie in het Nederlands. De bestaande code, het commentaar en de FA zijn in het
-  Engels; of nieuwe code Nederlands wordt (zoals in `crystalclear`), beslist de gebruiker (`docs/pdc-voorstel.md` §7).
+- Code, commentaar en commitberichten in het **Engels** (beslissing van de gebruiker, 10 oktober 2026), net als de FA en de
+  README. Notities voor de gebruiker, zoals `docs/pdc-voorstel.md`, mogen Nederlands zijn.
+- Lettertype: Arial. De stijl staat in `docs/visual-style.md`.
 - Documentatie bijhouden: leg elke beslissing van de gebruiker en elke afgeronde wijziging vast in de FA of de README,
   in dezelfde commit of vlak erna. Een beslissing die de koppeling met spic raakt, hoort ook in
   `docs/stand-van-zaken.md` van `crystalclear`: meld ze aan de gebruiker.
@@ -28,7 +29,9 @@ nieuwe documentatie "PDC".
   cloudomgeving).
 - Sleutels, wachtwoorden en `.env` komen nooit in de repository, ook geen voorbeelden met echte waarden. Tests en
   voorbeeldgegevens gebruiken verzonnen namen, geen echte tolken of toewijzingen.
-- PDC schrijft nooit rechtstreeks in de databank van spic.
+- PDC schrijft nooit rechtstreeks in de databank van spic. PDC hangt uitdrukkelijk af van Authelia (identiteit) en van
+  spic (vergaderingen en rechten).
+- De databank is SQLite (beslist op 10 oktober 2026); het prototype van fase 1 gebruikt nog MySQL.
 
 ## Uitrollen
 
