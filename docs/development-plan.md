@@ -1,4 +1,10 @@
-# Interpreter Management System - Development Plan
+# PDC - Development Plan
+
+> **PDC (10 October 2026):** the application is now called PDC (Prestatiedatabank voor
+> Conferentietolken). The meetings come from spic (functional analysis 1.2, section 1), so
+> Phase 1b below was added. What the Phase 1 prototype does differently from the decisions,
+> and the proposals for the database, the lock and the login, are in
+> [pdc-voorstel.md](pdc-voorstel.md).
 
 > **Note:** this plan was written before the functional analysis. Where they differ,
 > [functional-analysis.md](functional-analysis.md) is authoritative - in particular the data
@@ -64,8 +70,33 @@ system_locks (id, locked_by_user_id, lock_type, created_at)
 
 **Deliverable**: Admin can manage interpreters and meetings
 
+Phase 1 is the prototype and test server. Its meetings are entered by hand; in PDC they come
+from spic (Phase 1b).
+
+### Phase 1b: Meetings from spic (PDC)
+**Goal**: PDC's own copy of the spic meetings, own meetings and the assignment log, as decided in
+the functional analysis 1.2. Comes before Phase 2, or alongside it.
+
+**Steps** (proposed order, see [pdc-voorstel.md](pdc-voorstel.md) §8):
+1. Decisions on the database, the editing lock, the login and the language of the code
+2. Database switch (proposal: SQLite, like spic), with migrations and a nightly back-up
+3. New meeting model: copy of spic meetings and own meetings in one table, history of the copy,
+   append-only assignment log, the two work lists; test data shaped like spic's export.
+   No link with spic yet
+4. The workbench for the planner
+5. The link: `GET /api/export?sinds=N` on spic's side (built in `crystalclear`), the update in
+   PDC when a screen opens and by a background task, the nightly full comparison
+6. Last: spic's write route for start time, room and cancellation
+
+**Deliverable**: The planner sees the spic meetings and own meetings in one list, and every
+assignment is logged with a snapshot of the meeting
+
 ### Phase 2: CSV Import & Availability
 **Goal**: Import availability data and basic matching
+
+Only availabilities come from Google Forms (CSV); meetings come from spic (Phase 1b). A later
+idea, not decided, is PDC's own response form instead of the CSV import (functional analysis,
+open point 14).
 
 **Features:**
 - CSV source configuration
@@ -95,7 +126,8 @@ system_locks (id, locked_by_user_id, lock_type, created_at)
   - Change interpreter assignments
   - Assign interpreters not in availability data
   - Handle conflicts and warnings
-- System locking during assignment work
+- System locking during assignment work (Phase 1 has it; the decisions on PDC conflict with it,
+  proposal: drop it, see [pdc-voorstel.md](pdc-voorstel.md) §4)
 - Status tracking (proposed → confirmed → completed)
 
 **Deliverable**: Complete assignment workflow
@@ -151,7 +183,13 @@ def suggest(slot, needed):
 ## Deployment Strategy
 
 - Local development with the Flask development server and SQLite
-- Production on the existing Python 3.8 / MySQL 8.0.40 server
-- Gunicorn behind the existing web server as reverse proxy
+- Test server (Phase 1): Docker on the infracriv platform, with its own MySQL 8.0.40 container
+  (`docker-compose.yml`)
+- Production (PDC): on the same server and in the same environment as spic. Proposals, not yet
+  decided: its own compose project on the `infracriv` network with its own version and tag,
+  deployed through GitHub Actions; a token for spic's export and write route; SQLite in a volume
+  with a nightly back-up; Python 3.12 like spic
+- Gunicorn behind Caddy and Authelia; the route lives in `CAL` (repository `infracriv`) and is
+  changed only when the user explicitly asks
 - Environment-specific configuration via `.env`
 - Git version control

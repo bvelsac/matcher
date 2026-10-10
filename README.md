@@ -1,4 +1,8 @@
-# matcher
+# PDC (matcher)
+
+**PDC** (Prestatiedatabank voor Conferentietolken) is the new name of this application,
+until now called `matcher`, "tolkenplanning" or "tolkenplanner". The person who plans the
+interpreters is still the planner (tolkenplanner).
 
 Match requests and availabilities.
 Requests concern specific tasks linked to a timeframe and are defined by an organization.
@@ -10,6 +14,9 @@ interpreter list with its legal priority order, the meetings that need interpret
 (in later phases) availabilities from Google Forms, bookings, confirmations and reports.
 
 The business model is described in [docs/functional-analysis.md](docs/functional-analysis.md).
+Version 1.2 of that analysis adds what was decided for PDC: the meetings come from **spic**,
+the meeting planning in the repository `bvelsac/crystalclear`. PDC keeps its own copy of them,
+next to its own meetings, and an append-only log of the assignments.
 
 ## Status
 
@@ -24,6 +31,13 @@ The business model is described in [docs/functional-analysis.md](docs/functional
 Phase 2 (Google Forms import, time slots, availabilities, bookings) follows the model in the
 functional analysis. See [docs/development-plan.md](docs/development-plan.md) for the phases.
 
+**Phase 1 is a prototype and test server, not yet PDC as decided.** In production PDC will run
+on the same server and in the same environment as spic. The prototype still has meetings
+entered by hand, MySQL, its own accounts and a system-wide editing lock. What differs from the
+decisions, and the proposals for the copy of the spic meetings, the database, the lock and the
+login, are in [docs/pdc-voorstel.md](docs/pdc-voorstel.md). Nothing has been built yet for the
+link with spic.
+
 ## Layout
 
 ```
@@ -34,7 +48,7 @@ extensions.py       Flask extensions
 manage.py           setup commands: tables, users, sample data
 templates/          HTML pages (Bootstrap 5)
 tests/              automated tests (pytest)
-docs/               functional analysis, development plan and visual style
+docs/               functional analysis, development plan, PDC proposals and visual style
 ```
 
 ## Requirements
