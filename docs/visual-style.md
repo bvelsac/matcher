@@ -9,6 +9,16 @@ Bootstrap 5 (white background, blue navbar) and do not follow it yet.
 The image is a mood reference for the look only. It is not an asset to use in the
 application.
 
+A second reference was shared on 10 October 2026: a close-up from the same footage, a face
+behind a microphone, with the same pink-and-black duotone and grain. It is not in the
+repository yet. The user's idea: use the **eye on the left of that image** as a page
+background, cropped, with faded colours, so that it stays behind the content. Put the file in
+`docs/img/` (or `static/` if it becomes a real asset) when the styling is built, and check that
+the footage may be used in the application.
+
+Further direction from the user: a **gritty, pixelated black-and-white look**, coloured with
+the palette below.
+
 ## The look
 
 - **Duotone, almost two colours**: deep black with a hint of aubergine for the shadows, and a
