@@ -4,11 +4,16 @@ Phase 2 adds the availability and booking model described in
 docs/functional-analysis.md (time slots, availability declarations,
 bookings, booking positions and meeting assignments).
 """
-from datetime import datetime
+from datetime import datetime, timezone
 
 from flask_login import UserMixin
 
 from extensions import db
+
+def utcnow():
+    """The current time in UTC, without time zone, as stored in the database."""
+    return datetime.now(timezone.utc).replace(tzinfo=None)
+
 
 MEETING_CATEGORIES = (
     ("parliament", "Parliament"),
@@ -30,7 +35,7 @@ class User(UserMixin, db.Model):
     id = db.Column(db.Integer, primary_key=True)
     username = db.Column(db.String(80), unique=True, nullable=False)  # Remote-User
     name = db.Column(db.String(200), nullable=False, default="")       # Remote-Name
-    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    created_at = db.Column(db.DateTime, default=utcnow)
 
     role = "viewer"  # set per request by auth.load_user_from_request
 
@@ -57,8 +62,8 @@ class Interpreter(db.Model):
     priority_order = db.Column(db.Integer, nullable=False, index=True)
     additional_languages = db.Column(db.Text)
     notes = db.Column(db.Text)
-    created_at = db.Column(db.DateTime, default=datetime.utcnow)
-    updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    created_at = db.Column(db.DateTime, default=utcnow)
+    updated_at = db.Column(db.DateTime, default=utcnow, onupdate=utcnow)
 
     @property
     def full_name(self):
@@ -90,8 +95,8 @@ class Meeting(db.Model):
         db.Enum(*CATEGORY_LABELS.keys(), name="meeting_categories"), nullable=False
     )
     created_by = db.Column(db.Integer, db.ForeignKey("users.id"), nullable=False)
-    created_at = db.Column(db.DateTime, default=datetime.utcnow)
-    updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    created_at = db.Column(db.DateTime, default=utcnow)
+    updated_at = db.Column(db.DateTime, default=utcnow, onupdate=utcnow)
 
     creator = db.relationship("User", backref="created_meetings")
 

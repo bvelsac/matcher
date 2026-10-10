@@ -10,12 +10,12 @@
 > [functional-analysis.md](functional-analysis.md) is authoritative - in particular the data
 > model, which replaces the single `assignments` table below with time slots, availability
 > declarations, bookings, booking positions and meeting assignments. pandas is not used; the standard `csv`
-> module is enough for the Google Forms exports and keeps Python 3.8 support.
+> module is enough for the Google Forms exports.
 
 ## System Architecture
 
 ### Backend Stack
-- **Framework**: Flask (Python 3.8) with SQLAlchemy ORM
+- **Framework**: Flask (Python 3.12, like spic) with SQLAlchemy ORM
 - **Database**: MySQL 8.0.40
 - **Authentication**: Flask-Login for session management
 - **CSV Processing**: Python `csv` module
@@ -198,7 +198,7 @@ def suggest(slot, needed):
 - Production (PDC): on the same server and in the same environment as spic. Proposals, not yet
   decided: its own compose project on the `infracriv` network with its own version and tag,
   deployed through GitHub Actions; a token for spic's export and write route; SQLite in a volume
-  with a nightly back-up; Python 3.12 like spic
+  with a nightly back-up
 - Gunicorn behind Caddy and Authelia; the route lives in `CAL` (repository `infracriv`) and is
   changed only when the user explicitly asks
 - Environment-specific configuration via `.env`

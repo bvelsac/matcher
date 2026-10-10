@@ -11,6 +11,8 @@
 - **No editing lock**: an edit form saved after someone else changed the record is refused,
   with the current details shown.
 - Browser tests (Playwright) for the style and the bottom bar.
+- **Python 3.12** (like spic) instead of 3.8, which no longer gets security updates; current
+  versions of Flask, SQLAlchemy and the other packages.
 
 ## 0.1.0 - Phase 1
 

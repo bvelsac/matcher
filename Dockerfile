@@ -1,5 +1,5 @@
-# Python 3.8, the same version as the production server.
-FROM python:3.8-slim
+# Python 3.12, the same version as spic on the same server.
+FROM python:3.12-slim
 
 ENV PYTHONUNBUFFERED=1 \
     PYTHONDONTWRITEBYTECODE=1 \

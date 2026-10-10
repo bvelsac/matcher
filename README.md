@@ -58,7 +58,7 @@ docs/               functional analysis, development plan, PDC proposals and vis
 
 ## Requirements
 
-- Python 3.8 or newer (the dependency versions are pinned for 3.8)
+- Python 3.12 (the version of spic; the dependency versions are pinned for it)
 - Caddy and Authelia in front of PDC, as on the infracriv platform
 
 ## Installation and local trial
@@ -171,9 +171,3 @@ The look is described in [docs/visual-style.md](docs/visual-style.md) and lives 
 `static/css/pdc.css`, on top of Bootstrap 5.3 in dark mode. The images in `static/img` are built
 from the reference images by `tools/style_assets.py` (needs Pillow, which the application itself
 does not use).
-
-## Notes
-
-- Python 3.8 no longer receives security updates from the Python project (end of life
-  October 2024). Plan a move to a supported version when the server allows it; the code needs
-  no changes for that, only newer versions in `requirements.txt`.
