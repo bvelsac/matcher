@@ -48,6 +48,8 @@ config.py           configuration (reads .env)
 extensions.py       Flask extensions
 manage.py           setup commands: tables, users, sample data
 templates/          HTML pages (Bootstrap 5)
+static/             stylesheet and images of the visual style
+tools/              script that builds the style images
 tests/              automated tests (pytest)
 docs/               functional analysis, development plan, PDC proposals and visual style
 ```
@@ -165,6 +167,20 @@ pytest
 
 The tests use an in-memory SQLite database and cover login, roles, interpreters, the priority
 order, meetings, the editing lock and CSRF protection.
+
+`tests/test_browser.py` checks the visual style in a real browser (Playwright and Chromium):
+Arial, the pixelated eye in the background, and enough contrast on buttons and badges. Install
+the browser once with `playwright install chromium`; without Playwright these tests are
+skipped. Where the CDN for Bootstrap cannot be reached, set `PDC_CDN_DIR` to a folder with the
+unpacked npm packages (see the docstring of that file); `PDC_CHROMIUM` can point at an existing
+Chromium binary.
+
+## Visual style
+
+The look is described in [docs/visual-style.md](docs/visual-style.md) and lives in
+`static/css/pdc.css`, on top of Bootstrap 5.3 in dark mode. The images in `static/img` are built
+from the reference images by `tools/style_assets.py` (needs Pillow, which the application itself
+does not use).
 
 ## Updating the server
 

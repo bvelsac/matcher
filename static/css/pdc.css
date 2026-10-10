@@ -1,0 +1,531 @@
+/*
+ * PDC visual style (docs/visual-style.md): a gritty, pixelated black-and-white look in the
+ * pink-and-black palette of the reference images, with Arial throughout. Loaded after
+ * Bootstrap 5.3 in dark mode (<html data-bs-theme="dark">) and overrides its variables.
+ * The images in ../img are built by tools/style_assets.py.
+ */
+
+:root[data-bs-theme="dark"] {
+    /* Palette from the reference images */
+    --pdc-black: #030001;
+    --pdc-ink: #0c0007;
+    --pdc-aubergine: #1c0719;
+    --pdc-violet: #612d58;
+    --pdc-pink-muted: #cf8dc9;
+    --pdc-pink: #ffc0fc;
+    /* Status colours, also taken from the images: all at least 8:1 against black */
+    --pdc-lavender: #cfa1ee;
+    --pdc-peach: #eec19a;
+    --pdc-coral: #f2907e;
+    --pdc-surface: rgba(12, 0, 7, 0.9);
+
+    --bs-body-font-family: Arial, Helvetica, sans-serif;
+    --bs-body-bg: var(--pdc-black);
+    --bs-body-bg-rgb: 3, 0, 1;
+    --bs-body-color: var(--pdc-pink);
+    --bs-body-color-rgb: 255, 192, 252;
+    --bs-emphasis-color: var(--pdc-pink);
+    --bs-emphasis-color-rgb: 255, 192, 252;
+    --bs-heading-color: var(--pdc-pink);
+    --bs-secondary-color: var(--pdc-pink-muted);
+    --bs-secondary-color-rgb: 207, 141, 201;
+    --bs-secondary-bg: var(--pdc-aubergine);
+    --bs-tertiary-bg: var(--pdc-ink);
+    --bs-border-color: var(--pdc-violet);
+    --bs-border-color-translucent: rgba(97, 45, 88, 0.6);
+    --bs-link-color: var(--pdc-pink);
+    --bs-link-color-rgb: 255, 192, 252;
+    --bs-link-hover-color: var(--pdc-pink-muted);
+    --bs-link-hover-color-rgb: 207, 141, 201;
+
+    /* Hard edges everywhere */
+    --bs-border-radius: 0;
+    --bs-border-radius-sm: 0;
+    --bs-border-radius-lg: 0;
+    --bs-border-radius-xl: 0;
+
+    --bs-primary: var(--pdc-pink);
+    --bs-primary-rgb: 255, 192, 252;
+    --bs-secondary: var(--pdc-violet);
+    --bs-secondary-rgb: 97, 45, 88;
+    --bs-success: var(--pdc-lavender);
+    --bs-success-rgb: 207, 161, 238;
+    --bs-info: var(--pdc-pink-muted);
+    --bs-info-rgb: 207, 141, 201;
+    --bs-warning: var(--pdc-peach);
+    --bs-warning-rgb: 238, 193, 154;
+    --bs-danger: var(--pdc-coral);
+    --bs-danger-rgb: 242, 144, 126;
+    --bs-light: var(--pdc-aubergine);
+    --bs-light-rgb: 28, 7, 25;
+    --bs-dark: var(--pdc-black);
+    --bs-dark-rgb: 3, 0, 1;
+
+    /* Alerts */
+    --bs-primary-text-emphasis: var(--pdc-pink);
+    --bs-primary-bg-subtle: var(--pdc-aubergine);
+    --bs-primary-border-subtle: var(--pdc-violet);
+    --bs-secondary-text-emphasis: var(--pdc-pink-muted);
+    --bs-secondary-bg-subtle: var(--pdc-ink);
+    --bs-secondary-border-subtle: var(--pdc-violet);
+    --bs-success-text-emphasis: var(--pdc-lavender);
+    --bs-success-bg-subtle: #140a20;
+    --bs-success-border-subtle: #4a3566;
+    --bs-info-text-emphasis: var(--pdc-pink-muted);
+    --bs-info-bg-subtle: var(--pdc-aubergine);
+    --bs-info-border-subtle: var(--pdc-violet);
+    --bs-warning-text-emphasis: var(--pdc-peach);
+    --bs-warning-bg-subtle: #1d1008;
+    --bs-warning-border-subtle: #6b4a2e;
+    --bs-danger-text-emphasis: var(--pdc-coral);
+    --bs-danger-bg-subtle: #200907;
+    --bs-danger-border-subtle: #7a3a30;
+}
+
+/* ---------------------------------------------------------------------------
+ * Page background: the eye, in coarse pixels and faded, with loose grain on top
+ * ------------------------------------------------------------------------- */
+
+body {
+    --pdc-eye-opacity: 0.2;
+    font-family: var(--bs-body-font-family);
+    color: var(--bs-body-color);
+    background-color: var(--pdc-black);
+}
+
+body::before,
+body::after {
+    content: "";
+    position: fixed;
+    inset: 0;
+    pointer-events: none;
+    image-rendering: pixelated;
+}
+
+body::before {
+    z-index: -2;
+    background: url("../img/eye.png") 60% 40% / cover no-repeat;
+    opacity: var(--pdc-eye-opacity);
+    filter: saturate(0.7);
+}
+
+body::after {
+    z-index: -1;
+    background: url("../img/grain.png") 0 0 / 128px 128px;
+    opacity: 0.25;
+}
+
+body.page-login {
+    --pdc-eye-opacity: 0.55;
+}
+
+h1, .h1 {
+    font-size: clamp(1.6rem, 1rem + 2.5vw, 2.5rem);
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+}
+
+h1 .bi, .card-header .bi {
+    color: var(--pdc-pink-muted);
+}
+
+::selection {
+    background: var(--pdc-pink);
+    color: var(--pdc-black);
+}
+
+:focus-visible {
+    outline: 2px solid var(--pdc-pink);
+    outline-offset: 2px;
+}
+
+.text-secondary {
+    color: var(--pdc-pink-muted) !important;
+}
+
+/* ---------------------------------------------------------------------------
+ * Navbar and sidebar
+ * ------------------------------------------------------------------------- */
+
+.pdc-navbar {
+    position: relative;
+    z-index: 2;
+    background-color: var(--pdc-black);
+    border-bottom: 2px solid var(--pdc-pink);
+}
+
+/* Pixels that thin out below the navbar */
+.pdc-navbar::after {
+    content: "";
+    position: absolute;
+    top: 100%;
+    left: 0;
+    right: 0;
+    height: 12px;
+    background: url("../img/edge.png") 0 0 / 256px 12px repeat-x;
+    image-rendering: pixelated;
+    pointer-events: none;
+}
+
+.pdc-navbar .navbar-brand {
+    display: flex;
+    align-items: baseline;
+    gap: 0.75rem;
+    color: var(--pdc-pink);
+}
+
+.pdc-brand {
+    font-weight: 700;
+    font-size: 1.6rem;
+    letter-spacing: 0.25em;
+}
+
+.pdc-brand-full {
+    font-size: 0.8rem;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--pdc-pink-muted);
+}
+
+.sidebar {
+    padding-top: 1.75rem !important;
+    background-color: rgba(3, 0, 1, 0.82);
+    border-bottom: 1px solid var(--pdc-violet);
+}
+
+@media (min-width: 768px) {
+    .sidebar {
+        min-height: calc(100vh - 58px);
+        border-bottom: 0;
+        border-right: 1px solid var(--pdc-violet);
+    }
+}
+
+.sidebar h6 {
+    margin-top: 0.5rem;
+    font-size: 0.75rem;
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+}
+
+.nav-pills {
+    --bs-nav-link-color: var(--pdc-pink);
+    --bs-nav-link-hover-color: var(--pdc-pink);
+    --bs-nav-link-disabled-color: var(--pdc-pink-muted);
+    --bs-nav-pills-link-active-color: var(--pdc-black);
+    --bs-nav-pills-link-active-bg: var(--pdc-pink);
+}
+
+.nav-pills .nav-link:not(.active):not(.disabled):hover {
+    background-color: var(--pdc-aubergine);
+}
+
+.nav-pills .nav-link.active .bi {
+    color: var(--pdc-black);
+}
+
+.main-content {
+    padding: 1.75rem 1.5rem 2rem;
+}
+
+/* Page and card headers wrap on narrow screens instead of squeezing */
+.main-content .d-flex.justify-content-between {
+    flex-wrap: wrap;
+    gap: 0.5rem 1rem;
+}
+
+.dropdown-menu {
+    --bs-dropdown-bg: var(--pdc-black);
+    --bs-dropdown-border-color: var(--pdc-violet);
+    --bs-dropdown-link-color: var(--pdc-pink);
+    --bs-dropdown-link-hover-color: var(--pdc-black);
+    --bs-dropdown-link-hover-bg: var(--pdc-pink);
+    --bs-dropdown-link-active-color: var(--pdc-black);
+    --bs-dropdown-link-active-bg: var(--pdc-pink);
+}
+
+/* ---------------------------------------------------------------------------
+ * Cards
+ * ------------------------------------------------------------------------- */
+
+.card {
+    --bs-card-bg: var(--pdc-surface);
+    --bs-card-border-color: var(--pdc-violet);
+    --bs-card-color: var(--pdc-pink);
+    --bs-card-cap-color: var(--pdc-pink);
+}
+
+.card-header {
+    /* The grain sits under a veil of the header colour, so it does not compete with the text */
+    background:
+        linear-gradient(rgba(28, 7, 25, 0.55), rgba(28, 7, 25, 0.55)),
+        url("../img/grain.png") 0 0 / 128px 128px,
+        var(--pdc-aubergine);
+    image-rendering: pixelated;
+    border-bottom: 1px solid var(--pdc-violet);
+}
+
+.card-header h5,
+.card-header h6,
+.card-title {
+    font-size: 0.85rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+}
+
+.card-footer {
+    background-color: rgba(28, 7, 25, 0.9);
+    border-top: 1px solid var(--pdc-violet);
+}
+
+/* Key figures: a coloured bar on top, the number in that colour */
+.stat-card {
+    --pdc-accent: var(--pdc-pink);
+    border-top: 4px solid var(--pdc-accent);
+}
+
+.stat-card .stat-value,
+.stat-card .stat-icon {
+    color: var(--pdc-accent);
+}
+
+.stat-card .stat-icon {
+    font-size: 2rem;
+}
+
+.stat-card.accent-lavender { --pdc-accent: var(--pdc-lavender); }
+.stat-card.accent-muted { --pdc-accent: var(--pdc-pink-muted); }
+.stat-card.accent-peach { --pdc-accent: var(--pdc-peach); }
+
+.meeting-card { transition: border-color 0.15s; }
+.meeting-card:hover { border-color: var(--pdc-pink); }
+
+/* ---------------------------------------------------------------------------
+ * Buttons: square, bold, upper case; filled ones invert on hover
+ * ------------------------------------------------------------------------- */
+
+.btn {
+    --bs-btn-font-weight: 700;
+    --bs-btn-font-size: 0.8rem;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+}
+
+.btn:focus-visible {
+    box-shadow: none;
+    outline: 2px solid var(--pdc-pink);
+    outline-offset: 2px;
+}
+
+.btn-primary {
+    --bs-btn-color: var(--pdc-black);
+    --bs-btn-bg: var(--pdc-pink);
+    --bs-btn-border-color: var(--pdc-pink);
+    --bs-btn-hover-color: var(--pdc-pink);
+    --bs-btn-hover-bg: var(--pdc-black);
+    --bs-btn-hover-border-color: var(--pdc-pink);
+    --bs-btn-active-color: var(--pdc-pink);
+    --bs-btn-active-bg: var(--pdc-black);
+    --bs-btn-active-border-color: var(--pdc-pink);
+    --bs-btn-disabled-color: var(--pdc-black);
+    --bs-btn-disabled-bg: var(--pdc-pink-muted);
+    --bs-btn-disabled-border-color: var(--pdc-pink-muted);
+}
+
+.btn-secondary {
+    --bs-btn-color: var(--pdc-pink);
+    --bs-btn-bg: var(--pdc-violet);
+    --bs-btn-border-color: var(--pdc-violet);
+    --bs-btn-hover-color: var(--pdc-pink);
+    --bs-btn-hover-bg: var(--pdc-aubergine);
+    --bs-btn-hover-border-color: var(--pdc-pink);
+    --bs-btn-active-color: var(--pdc-pink);
+    --bs-btn-active-bg: var(--pdc-aubergine);
+    --bs-btn-active-border-color: var(--pdc-pink);
+}
+
+/* Outline buttons: text and border in the colour, filled with it on hover */
+.btn-outline-primary { --pdc-btn: var(--pdc-pink); }
+.btn-outline-secondary { --pdc-btn: var(--pdc-pink-muted); }
+.btn-outline-success { --pdc-btn: var(--pdc-lavender); }
+.btn-outline-info { --pdc-btn: var(--pdc-pink-muted); }
+.btn-outline-warning { --pdc-btn: var(--pdc-peach); }
+.btn-outline-danger { --pdc-btn: var(--pdc-coral); }
+
+.btn-outline-primary,
+.btn-outline-secondary,
+.btn-outline-success,
+.btn-outline-info,
+.btn-outline-warning,
+.btn-outline-danger {
+    --bs-btn-color: var(--pdc-btn);
+    --bs-btn-border-color: var(--pdc-btn);
+    --bs-btn-hover-color: var(--pdc-black);
+    --bs-btn-hover-bg: var(--pdc-btn);
+    --bs-btn-hover-border-color: var(--pdc-btn);
+    --bs-btn-active-color: var(--pdc-black);
+    --bs-btn-active-bg: var(--pdc-btn);
+    --bs-btn-active-border-color: var(--pdc-btn);
+    --bs-btn-disabled-color: var(--pdc-pink-muted);
+    --bs-btn-disabled-bg: transparent;
+    --bs-btn-disabled-border-color: var(--pdc-violet);
+    background-color: rgba(3, 0, 1, 0.6);
+}
+
+.btn-outline-primary:hover,
+.btn-outline-secondary:hover,
+.btn-outline-success:hover,
+.btn-outline-info:hover,
+.btn-outline-warning:hover,
+.btn-outline-danger:hover,
+.btn-outline-primary.active,
+.btn-outline-secondary.active,
+.btn-outline-success.active,
+.btn-outline-info.active,
+.btn-outline-warning.active,
+.btn-outline-danger.active {
+    background-color: var(--pdc-btn);
+}
+
+/* ---------------------------------------------------------------------------
+ * Badges: square, dark text on the light colours
+ * ------------------------------------------------------------------------- */
+
+.badge {
+    --bs-badge-font-weight: 700;
+    letter-spacing: 0.04em;
+}
+
+.badge.bg-primary,
+.badge.bg-success,
+.badge.bg-info,
+.badge.bg-warning,
+.badge.bg-danger {
+    color: var(--pdc-black);
+}
+
+.badge.bg-secondary {
+    color: var(--pdc-pink);
+}
+
+.badge.bg-light {
+    border: 1px solid var(--pdc-violet);
+}
+
+/* ---------------------------------------------------------------------------
+ * Tables
+ * ------------------------------------------------------------------------- */
+
+.table {
+    --bs-table-bg: transparent;
+    --bs-table-color: var(--pdc-pink);
+    --bs-table-border-color: rgba(97, 45, 88, 0.7);
+    --bs-table-hover-bg: rgba(97, 45, 88, 0.45);
+    --bs-table-hover-color: var(--pdc-pink);
+}
+
+.table > thead th {
+    font-size: 0.75rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    color: var(--pdc-pink-muted);
+    border-bottom: 2px solid var(--pdc-violet);
+}
+
+.table-light {
+    --bs-table-bg: var(--pdc-aubergine);
+    --bs-table-color: var(--pdc-pink-muted);
+    --bs-table-border-color: var(--pdc-violet);
+}
+
+/* ---------------------------------------------------------------------------
+ * Forms
+ * ------------------------------------------------------------------------- */
+
+.form-control,
+.form-select {
+    background-color: var(--pdc-black);
+    color: var(--pdc-pink);
+    border-color: var(--pdc-violet);
+}
+
+.form-control::placeholder {
+    color: var(--pdc-pink-muted);
+    opacity: 0.75;
+}
+
+.form-control:focus,
+.form-select:focus {
+    background-color: var(--pdc-black);
+    color: var(--pdc-pink);
+    border-color: var(--pdc-pink);
+    box-shadow: 0 0 0 0.2rem rgba(255, 192, 252, 0.3);
+}
+
+.form-label {
+    font-size: 0.8rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+}
+
+.input-group-text {
+    background-color: var(--pdc-aubergine);
+    color: var(--pdc-pink-muted);
+    border-color: var(--pdc-violet);
+}
+
+/* Native date and time pickers in the dark scheme */
+input[type="date"],
+input[type="time"] {
+    color-scheme: dark;
+}
+
+/* ---------------------------------------------------------------------------
+ * Alerts
+ * ------------------------------------------------------------------------- */
+
+.alert {
+    border-left-width: 4px;
+}
+
+/* ---------------------------------------------------------------------------
+ * Login: the eye shows more, the brand stands large
+ * ------------------------------------------------------------------------- */
+
+.login-header {
+    padding: 1.75rem 1rem 1.25rem;
+    text-align: center;
+}
+
+.login-header .pdc-brand {
+    display: block;
+    font-size: 3rem;
+    line-height: 1;
+}
+
+.login-header .pdc-brand-full {
+    display: block;
+    margin-top: 0.5rem;
+}
+
+.login-header p {
+    margin: 1rem 0 0;
+    color: var(--pdc-pink-muted);
+}
+
+/* ---------------------------------------------------------------------------
+ * Empty states and error pages
+ * ------------------------------------------------------------------------- */
+
+.empty-icon {
+    font-size: 4rem;
+    color: var(--pdc-violet);
+}
+
+.error-icon {
+    font-size: 5rem;
+}

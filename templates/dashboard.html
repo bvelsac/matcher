@@ -1,6 +1,6 @@
 {% extends "base.html" %}
 
-{% block title %}Dashboard - Interpreter Management{% endblock %}
+{% block title %}Dashboard - PDC{% endblock %}
 
 {% block content %}
 <div class="d-flex justify-content-between align-items-center mb-4">
@@ -10,45 +10,45 @@
 
 <div class="row mb-4">
     <div class="col-md-4">
-        <div class="card bg-primary text-white">
+        <div class="card stat-card">
             <div class="card-body d-flex justify-content-between">
                 <div>
                     <h5 class="card-title">Interpreters</h5>
-                    <h2 class="mb-0">{{ total_interpreters }}</h2>
+                    <h2 class="mb-0 stat-value">{{ total_interpreters }}</h2>
                 </div>
-                <i class="bi bi-people align-self-center" style="font-size: 2rem;"></i>
+                <i class="bi bi-people align-self-center stat-icon"></i>
             </div>
             <div class="card-footer">
-                <a href="{{ url_for('interpreters') }}" class="text-white text-decoration-none">
+                <a href="{{ url_for('interpreters') }}" class="text-decoration-none">
                     <i class="bi bi-arrow-right"></i> Manage interpreters
                 </a>
             </div>
         </div>
     </div>
     <div class="col-md-4">
-        <div class="card bg-success text-white">
+        <div class="card stat-card accent-lavender">
             <div class="card-body d-flex justify-content-between">
                 <div>
                     <h5 class="card-title">Upcoming meetings</h5>
-                    <h2 class="mb-0">{{ upcoming_meetings }}</h2>
+                    <h2 class="mb-0 stat-value">{{ upcoming_meetings }}</h2>
                 </div>
-                <i class="bi bi-calendar-event align-self-center" style="font-size: 2rem;"></i>
+                <i class="bi bi-calendar-event align-self-center stat-icon"></i>
             </div>
             <div class="card-footer">
-                <a href="{{ url_for('meetings') }}" class="text-white text-decoration-none">
+                <a href="{{ url_for('meetings') }}" class="text-decoration-none">
                     <i class="bi bi-arrow-right"></i> Manage meetings
                 </a>
             </div>
         </div>
     </div>
     <div class="col-md-4">
-        <div class="card bg-info text-white">
+        <div class="card stat-card accent-muted">
             <div class="card-body d-flex justify-content-between">
                 <div>
                     <h5 class="card-title">Your access</h5>
-                    <p class="mb-0">{{ current_user.role.title() }}</p>
+                    <p class="mb-0 stat-value">{{ current_user.role.title() }}</p>
                 </div>
-                <i class="bi bi-gear align-self-center" style="font-size: 2rem;"></i>
+                <i class="bi bi-gear align-self-center stat-icon"></i>
             </div>
             <div class="card-footer">
                 {% if current_user.is_editor %}
@@ -129,7 +129,7 @@
         </div>
         {% else %}
         <div class="text-center text-muted py-4">
-            <i class="bi bi-calendar-x" style="font-size: 3rem;"></i>
+            <i class="bi bi-calendar-x empty-icon"></i>
             <p class="mt-2">No upcoming meetings.</p>
             {% if current_user.is_editor %}
             <a href="{{ url_for('add_meeting') }}" class="btn btn-primary"><i class="bi bi-calendar-plus"></i> Add meeting</a>

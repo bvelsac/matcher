@@ -1,2 +1,4 @@
 -r requirements.txt
 pytest==8.3.5
+# Browser tests (tests/test_browser.py); Playwright no longer supports Python 3.8, where they are skipped.
+playwright==1.63.0; python_version >= "3.9"
