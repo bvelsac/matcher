@@ -126,8 +126,9 @@ Een bureau factureert per maand voor al zijn tolken. Daarom in de FA:
 - een tabel `invoices` (FA §2.9): wie factureert, referentie, datum van ontvangst, periode, notities. Een positie
   verwijst naar haar factuur (`booking_positions.invoice_id`); de planner noteert een factuur één keer en koppelt in één
   handeling alle posities die ze dekt;
-- per tolk een standaard `engagement` (`invoice` of `dimona`), per positie aan te passen, en per positie
-  `dimona_declared`;
+- per tolk `engagement`: `invoice` (de tolk werkt op factuur) of `occasional_work` (de tolk werkt via het systeem van
+  gelegenheidswerk, met een Dimona-aangifte en zonder factuur; bevestigd door de gebruiker op 10 oktober 2026), en per
+  positie `dimona_declared`;
 - op de boeking `forfait_hours` ("forfait 3u"); op de toewijzing `cancellation_communicated_on` ("annulation transmise");
 - twee werklijsten: "factuur nog niet binnen" en "Dimona aan te geven".
 

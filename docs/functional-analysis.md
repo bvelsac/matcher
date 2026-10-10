@@ -17,7 +17,7 @@
 > described there. Decisions of the user on 10 October 2026, after the proposals in
 > `docs/pdc-voorstel.md`: SQLite as database, no editing lock, login through Authelia with the
 > rights taken from spic, code in English (9, points 3 and 11). Also added, after the planner's
-> spreadsheet for 2026-2027: invoices (new 2.9), invoice or Dimona per service, the forfait of a
+> spreadsheet for 2026-2027: invoices (new 2.9), invoice or occasional work (Dimona) per interpreter, the forfait of a
 > booking, when a cancellation was passed on to the interpreter, and a default number of
 > interpreters per meeting (9, point 17).
 >
@@ -125,7 +125,7 @@ Later a similar application will follow for another category of freelancers, als
 | `bureau_affiliation` | String | Optional | Bureau name if representing an agency; null for individuals |
 | `additional_languages` | String | Optional | Languages beyond Dutch/French |
 | `notes` | Text | Optional | Free-form administrative notes |
-| `engagement` | Enum | Required, default INVOICE | How the interpreter is normally paid: INVOICE (self-employed interpreter or bureau, who sends an invoice) or DIMONA (employed for the service, declared through Dimona). The spreadsheet's column "FACT. of DIM" |
+| `engagement` | Enum | Required, default INVOICE | How the interpreter works (the user, 10 October 2026): INVOICE, an interpreter or bureau that works on invoice ("FACT." in the spreadsheet), or OCCASIONAL_WORK, an interpreter who works through the system of occasional work (gelegenheidswerk), which requires a Dimona declaration and has no invoice ("DIM") |
 
 **Business Rules**:
 - **BR-INT-001**: Email must be unique across all interpreters (used for availability matching)
@@ -271,9 +271,8 @@ A booking is the commitment to a supplier for a TIME BLOCK: "Bureau X, 3 interpr
 | `actual_start_time` | DateTime | Optional | When this interpreter actually started |
 | `actual_end_time` | DateTime | Optional | When this interpreter actually finished |
 | `notes` | Text | Optional | E.g. "replacement for X, who fell ill" |
-| `engagement` | Enum | Required | INVOICE or DIMONA for this service; taken from the interpreter (2.1), can be changed per position |
-| `invoice_id` | Integer | Foreign key, optional | The invoice (2.9) that covers this service. Empty: not received yet. Only for INVOICE |
-| `dimona_declared` | Boolean | Required, default FALSE | The Dimona declaration for this service is done ("DIM / ok" in the spreadsheet). Only for DIMONA |
+| `invoice_id` | Integer | Foreign key, optional | The invoice (2.9) that covers this service. Empty: not received yet. Only when the interpreter works on invoice |
+| `dimona_declared` | Boolean | Required, default FALSE | The Dimona declaration for this service is done ("DIM / ok" in the spreadsheet). Only for occasional work |
 
 **Business Rules**:
 - **BR-POS-001**: A position belongs to exactly one booking; position_number is unique within that booking
@@ -284,14 +283,14 @@ A booking is the commitment to a supplier for a TIME BLOCK: "Bureau X, 3 interpr
 - **BR-POS-006**: interpreter_name must be filled in before the booking is COMPLETED (needed for the overview to HR)
 - **BR-POS-007**: Actual hours are recorded per position, because interpreters at the same meeting can work different hours (one stays longer than another)
 - **BR-POS-008**: Whether the invoice for a service has come in, and its reference, are recorded per position, by linking the position to an invoice (2.9). One invoice often covers several positions (a bureau invoicing a month), so the planner records the invoice once and links all positions it covers in one action. Linking and unlinking are logged like any other change
-- **BR-POS-009**: A position paid through Dimona has no invoice; instead the planner ticks that the Dimona declaration is done
+- **BR-POS-009**: Whether a position needs an invoice or a Dimona declaration follows from the interpreter's engagement (2.1): an interpreter in occasional work sends no invoice; instead the planner ticks that the Dimona declaration is done. The engagement at the time is kept in the assignment log's snapshot
 
 **Derived Properties**:
 - `interpreter_id`: From the booking (the individual or the bureau, whose priority applies)
 - `assigned_meetings`: Meetings linked to this position by non-cancelled assignments
 - `free_periods`: Parts of the booking's time block not covered by an assigned meeting
 - `actual_duration_hours`: (actual_end_time - actual_start_time) in hours
-- `invoice_received`: TRUE when the position is linked to an invoice. COMPLETED INVOICE positions without an invoice form the work list **invoice not received yet**; COMPLETED DIMONA positions without a declaration form the work list **Dimona to declare**
+- `invoice_received`: TRUE when the position is linked to an invoice. COMPLETED positions of interpreters on invoice without an invoice form the work list **invoice not received yet**; COMPLETED positions of interpreters in occasional work without a declaration form the work list **Dimona to declare**
 
 **Key Insight**:
 The position is the unit of dispatching. Example:
@@ -1229,10 +1228,10 @@ Not yet covered by this analysis:
 17. **The planner's spreadsheet** (`TOLKENPLANNING_2026-2027.xlsx`, seen on 10 October 2026; it holds real personal data and never goes into the repository). One sheet per week (sheets for recess weeks are named "SCHORSING" or "GESLOTEN"), five days, two columns of meetings per day; per meeting a block of rows: time, meeting, Tolk 1, Tolk 2, Tolk 3 (plenary only), with the bureau in brackets after the name of the interpreter it sends. Next to each row a column "FACT. of DIM". What it showed, and where it is now in this model:
     - Meetings are spic's committee codes, plenary sessions and (extended) bureau, plus events that are not in spic (an animation in the hemicycle, a visit): confirms 1.1 and the own meetings.
     - Times are free text ("09.30 - 12.30", "11.00", "14.30 - finish", "?"): end times are often unknown, as in 2.7.
-    - "FACT. of DIM" next to an interpreter holds the invoice number, "ok", "DIM" or "DIM / ok": invoice or Dimona per service (2.1, 2.5) and the invoice (2.9). Next to a meeting it sometimes holds one invoice number for the whole meeting.
+    - "FACT. of DIM" next to an interpreter holds the invoice number, "ok", "DIM" or "DIM / ok": invoice or occasional work with a Dimona declaration, a property of the interpreter (2.1, 2.5), and the invoice (2.9). Next to a meeting it sometimes holds one invoice number for the whole meeting.
     - Next to the time: "forfait 3u", "forfait 3u + overuren", "bloc 1": the forfait of the booking (2.4) and overtime per position.
     - "annulation transmise dd/mm" next to an interpreter: when the cancellation was passed on (2.6).
     - "nom à confirmer": the bureau has not given the name yet (2.5, interpreter_name). Names struck through: an interpreter replaced or cancelled; PDC keeps that in the position's notes and the log. Cell comments note reasons ("ill", "time changed on 30/9") and invoice discrepancies ("only one interpreter charged on the September invoice").
     - A memo sheet holds a request from another department for interpreters at an event it pays for itself.
 
-    Questions for the user: what "ok" means without a number (invoice received, checked, or paid); what "bloc 1", "bloc 2" mean; whether "DIM" belongs to the interpreter or can change per service; whether own meetings need a department that pays (cost bearer); and whether the data of 2026-2027 must be imported into PDC.
+    Questions for the user: what "ok" means without a number (invoice received, checked, or paid); what "bloc 1", "bloc 2" mean; whether own meetings need a department that pays (cost bearer); and whether the data of 2026-2027 must be imported into PDC.
