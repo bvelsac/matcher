@@ -39,9 +39,9 @@ from it.
   tile of loose pink pixels lies over it for grain.
 - **Accent, one per screen**: the other tints found in the images. The accent colours the active
   menu item, the icon of the page title, the bar on the left of card headers, the line under
-  table headers, and the navbar line with the strip of pixels below it.
-- **Navbar**: black with a line in the accent colour, and below it a strip of pixels that thins
-  out.
+  table headers, and the navbar line with the strip of pixels above it.
+- **Navbar**: at the bottom of the screen (the user's wish), black with a line in the accent
+  colour, and above it a strip of pixels that thins out upwards. The user menu opens upwards.
 - **Surfaces**: cards are near-black and slightly transparent, so the background stays faintly
   visible;
   card headers carry a softened grain. All corners are square.

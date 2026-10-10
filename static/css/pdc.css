@@ -207,18 +207,23 @@ h1 .bi {
  * Navbar and sidebar
  * ------------------------------------------------------------------------- */
 
-.pdc-navbar {
-    position: relative;
-    z-index: 2;
-    background-color: var(--pdc-black);
-    border-bottom: 2px solid var(--pdc-accent);
+/* The navbar sits at the bottom of the screen (the user's wish, 10 October 2026) */
+body {
+    padding-bottom: 76px;
 }
 
-/* Pixels that thin out below the navbar, in the accent colour of the screen */
+.pdc-navbar {
+    z-index: 1030;
+    background-color: var(--pdc-black);
+    border-top: 2px solid var(--pdc-accent);
+}
+
+/* Pixels that thin out above the navbar, in the accent colour of the screen */
 .pdc-navbar::after {
     content: "";
     position: absolute;
-    top: 100%;
+    bottom: 100%;
+    transform: scaleY(-1);
     left: 0;
     right: 0;
     height: 12px;
@@ -249,14 +254,14 @@ h1 .bi {
 }
 
 .sidebar {
-    padding-top: 1.75rem !important;
+    padding-top: 1.5rem !important;
     background-color: rgba(3, 0, 1, 0.82);
     border-bottom: 1px solid var(--pdc-violet);
 }
 
 @media (min-width: 768px) {
     .sidebar {
-        min-height: calc(100vh - 58px);
+        min-height: calc(100vh - 76px);
         border-bottom: 0;
         border-right: 1px solid var(--pdc-violet);
     }

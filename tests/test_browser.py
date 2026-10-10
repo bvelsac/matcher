@@ -158,3 +158,22 @@ def test_each_screen_has_its_own_background_and_accent(page, server, path, backg
     if active:  # the error pages have no active menu item
         assert active.evaluate("(el) => getComputedStyle(el).backgroundColor") == accent
         assert active.evaluate(CONTRAST_JS) >= 4.5
+
+
+def test_navbar_sits_at_the_bottom(page, server):
+    log_in(page, server)
+    page.goto(server + "/interpreters")
+
+    box = page.query_selector(".pdc-navbar").bounding_box()
+    viewport = page.viewport_size
+    assert abs(box["y"] + box["height"] - viewport["height"]) < 1
+    # The page keeps room for it, so the last content is not hidden behind the bar.
+    padding = page.evaluate("() => parseFloat(getComputedStyle(document.body).paddingBottom)")
+    assert padding >= box["height"]
+
+    # The user menu opens upwards, inside the screen.
+    toggle = page.query_selector(".pdc-navbar .dropdown-toggle")
+    toggle.click()
+    menu_box = page.wait_for_selector(".pdc-navbar .dropdown-menu.show").bounding_box()
+    assert menu_box["y"] >= 0
+    assert menu_box["y"] + menu_box["height"] <= toggle.bounding_box()["y"] + 1
