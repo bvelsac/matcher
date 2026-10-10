@@ -22,22 +22,23 @@ next to its own meetings, and an append-only log of the assignments.
 
 **Phase 1** is implemented:
 
-- Login with two roles: *editor* (changes data) and *viewer* (read only)
+- Sign-in through Authelia: PDC takes the identity from the headers Caddy passes on and has no
+  passwords of its own. Everyone Authelia lets in can read; the user ids in `PDC_EDITORS` can
+  change data (interim, until spic gives PDC its list of invoerders and beheerders)
 - Interpreters and bureaus: add, edit, delete, drag-and-drop priority order (kept as 1..N)
 - Meetings: add, edit, delete, search and filter by category
-- Editing lock: an editor can lock the system while dispatching; other editors can then
-  only view. A forgotten lock expires after 4 hours (configurable).
+- No editing lock: a form that someone else saved in the meantime is caught when it is saved,
+  and shows the current details
+- SQLite database in WAL mode, with `manage.py backup`
 
 Phase 2 (Google Forms import, time slots, availabilities, bookings) follows the model in the
 functional analysis. See [docs/development-plan.md](docs/development-plan.md) for the phases.
 
-**Phase 1 is a prototype and test server, not yet PDC as decided.** In production PDC will run
-on the same server and in the same environment as spic. The prototype still has meetings
-entered by hand, MySQL, its own accounts and a system-wide editing lock. What differs from the
-decisions, and the design of the copy of the spic meetings, are in
-[docs/pdc-voorstel.md](docs/pdc-voorstel.md). Decided on 10 October 2026: SQLite instead of
-MySQL, no editing lock, login through Authelia with the rights taken from spic. Nothing has been
-built yet for the link with spic.
+**Phase 1 is a prototype, not yet PDC as decided.** In production PDC will run on the same
+server and in the same environment as spic. The prototype still has meetings entered by hand;
+the copy of the spic meetings, the own meetings and the assignment log come next (Phase 1b).
+What differs from the decisions, and the design of the copy, are in
+[docs/pdc-voorstel.md](docs/pdc-voorstel.md). Nothing has been built yet for the link with spic.
 
 ## Layout
 
@@ -46,7 +47,8 @@ app.py              routes and permissions
 models.py           database tables
 config.py           configuration (reads .env)
 extensions.py       Flask extensions
-manage.py           setup commands: tables, users, sample data
+auth.py             identity from Authelia, rights
+manage.py           setup commands: tables, back-up, sample data
 templates/          HTML pages (Bootstrap 5)
 static/             stylesheet and images of the visual style
 tools/              script that builds the style images
@@ -56,93 +58,74 @@ docs/               functional analysis, development plan, PDC proposals and vis
 
 ## Requirements
 
-- Python 3.8 (the dependency versions are pinned for it; newer Python versions work too)
-- MySQL 8.0
-- A web server to act as reverse proxy in front of gunicorn (Apache, nginx, Caddy...)
+- Python 3.8 or newer (the dependency versions are pinned for 3.8)
+- Caddy and Authelia in front of PDC, as on the infracriv platform
 
-## Installation
+## Installation and local trial
 
 ```bash
 git clone https://github.com/bvelsac/matcher.git
 cd matcher
-python3.8 -m venv venv
+python3 -m venv venv
 source venv/bin/activate
 pip install -r requirements.txt
+
+export APP_CONFIG=development        # SQLite file pdc_dev.db, fixed user "developer" (editor)
+python manage.py init-db
+python manage.py sample-data         # fictitious interpreters and meetings
+python app.py                        # http://127.0.0.1:5000
 ```
 
-### Database
+In development PDC does not need Authelia: `PDC_AUTH_MODE=dev` (the default there) signs
+everyone in as `PDC_DEV_USER`.
 
-```sql
-CREATE DATABASE interpreter_system CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
-CREATE USER 'interpreter_user'@'localhost' IDENTIFIED BY 'choose-a-password';
-GRANT ALL PRIVILEGES ON interpreter_system.* TO 'interpreter_user'@'localhost';
-FLUSH PRIVILEGES;
-```
-
-### Configuration
+## Configuration
 
 ```bash
 cp .env.example .env
 python3 -c "import secrets; print(secrets.token_hex(32))"   # paste as SECRET_KEY in .env
 ```
 
-Fill in `MYSQL_PASSWORD` and the other values in `.env`. The application refuses to start
-in production without a `SECRET_KEY`.
+The application refuses to start in production without a `SECRET_KEY`. The database is
+`/data/pdc.db` unless `DATABASE_URL` says otherwise. `PDC_EDITORS` lists the Authelia user
+ids that may change data, separated by commas.
 
-### Tables and users
+**PDC trusts the headers `Remote-User` and `Remote-Name`.** That is only safe when PDC is
+reachable through Caddy and Authelia alone: never publish its port, and only put trusted
+containers on the `infracriv` network (the same rule as for spic).
 
-```bash
-python manage.py init-db
-python manage.py create-user --username secretariaat --email ... --role editor
-python manage.py create-user --username teamlead --email ... --role editor
-python manage.py create-user --username director --email ... --role viewer
-```
-
-Each command asks for the password. To change one later: `python manage.py set-password --username ...`.
-There is no default account.
-
-## Running
-
-Production, behind your web server:
+## Back-up
 
 ```bash
-gunicorn -w 3 -b 127.0.0.1:8000 app:app
+python manage.py backup /path/to/pdc-2026-10-10.db
 ```
 
-Point the reverse proxy at `127.0.0.1:8000` and serve the site over HTTPS. To keep gunicorn
-running, use a systemd service (or the process manager already used on the server).
-
-Local trial without MySQL:
-
-```bash
-export APP_CONFIG=development        # SQLite file interpreter_system_dev.db
-python manage.py init-db
-python manage.py create-user
-python manage.py sample-data         # fictitious interpreters and meetings
-python app.py                        # http://127.0.0.1:5000
-```
+This uses SQLite's own backup, which gives a consistent copy while PDC keeps running. It never
+overwrites an existing file. A nightly back-up to a place outside the volume is still to be set
+up on the server (the assignments cannot be recovered from spic).
 
 ## Test server on the infracriv platform (Docker)
 
-`docker-compose.yml` runs the application with its own MySQL 8.0.40 container, on the same
-Python 3.8 as production. The application joins the shared `infracriv` network, so Caddy
-can put it behind the Authelia login like the other applications.
+`docker-compose.yml` runs PDC as one container, with its SQLite database on the volume
+`matcher_data`. It joins the shared `infracriv` network, so Caddy can put it behind the
+Authelia login like the other applications.
 
 On the server:
 
 ```bash
 git clone https://github.com/bvelsac/matcher.git
 cd matcher
-cp .env.example .env      # fill in SECRET_KEY, MYSQL_PASSWORD and MYSQL_ROOT_PASSWORD
+cp .env.example .env      # fill in SECRET_KEY and PDC_EDITORS
 docker compose up -d --build
-docker compose exec matcher python manage.py create-user
 docker compose exec matcher python manage.py sample-data     # optional, fictitious data
+docker compose exec matcher python manage.py backup /data/pdc-copy.db
 ```
 
-The first start takes a minute: MySQL initialises its data directory, then the application
-creates its tables. `docker compose logs -f matcher` shows progress.
+The container creates missing tables when it starts. `docker compose logs -f matcher` shows
+progress.
 
-Route in `CAL/caddy/Caddyfile` of the infracriv repository, followed by a Caddy reload:
+Route in `CAL/caddy/Caddyfile` of the infracriv repository, followed by a Caddy reload (only
+when the user asks for it explicitly):
 
 ```
 matcher.infracriv.net {
@@ -153,10 +136,9 @@ matcher.infracriv.net {
 
 The subdomain also needs a DNS record at Cloudflare, like the other subdomains.
 
-Users first pass the Authelia login and then log in to matcher with the account made by
-`create-user`.
-
-To update: `git pull` and `docker compose up -d --build`. The data stays in the `matcher_db` volume.
+To update: `git pull` and `docker compose up -d --build`. The data stays in the `matcher_data`
+volume. The earlier test server with MySQL kept only fictitious data; its `matcher_db` volume
+can be removed.
 
 ## Tests
 
@@ -165,8 +147,8 @@ pip install -r requirements-dev.txt
 pytest
 ```
 
-The tests use an in-memory SQLite database and cover login, roles, interpreters, the priority
-order, meetings, the editing lock and CSRF protection.
+The tests use an in-memory SQLite database and cover the sign-in through Authelia's headers,
+rights, interpreters, the priority order, meetings, outdated forms and CSRF protection.
 
 `tests/test_browser.py` checks the visual style in a real browser (Playwright and Chromium):
 Arial, the pixelated eye in the background, and enough contrast on buttons and badges. Install
@@ -182,22 +164,8 @@ The look is described in [docs/visual-style.md](docs/visual-style.md) and lives 
 from the reference images by `tools/style_assets.py` (needs Pillow, which the application itself
 does not use).
 
-## Updating the server
-
-```bash
-cd matcher
-git pull
-source venv/bin/activate
-pip install -r requirements.txt
-python manage.py init-db     # creates new tables only; existing data is left alone
-```
-
-Then restart gunicorn. `.env` and local databases are excluded by `.gitignore`, so
-passwords and data never end up in the repository.
-
 ## Notes
 
 - Python 3.8 no longer receives security updates from the Python project (end of life
   October 2024). Plan a move to a supported version when the server allows it; the code needs
   no changes for that, only newer versions in `requirements.txt`.
-- Times shown for the editing lock are in UTC.

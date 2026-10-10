@@ -3,11 +3,9 @@ import os
 os.environ["APP_CONFIG"] = "testing"  # must be set before the app module is imported
 
 import pytest
-from werkzeug.security import generate_password_hash
 
 from app import app as flask_app
 from extensions import db
-from models import User
 
 
 @pytest.fixture
@@ -16,14 +14,6 @@ def app():
     # as in production (otherwise test clients would share Flask's `g`).
     with flask_app.app_context():
         db.create_all()
-        for username, role in (("editor", "editor"), ("editor2", "editor"), ("viewer", "viewer")):
-            db.session.add(User(
-                username=username,
-                email="{}@example.org".format(username),
-                role=role,
-                password_hash=generate_password_hash("password123"),
-            ))
-        db.session.commit()
     yield flask_app
     with flask_app.app_context():
         db.session.remove()
@@ -35,8 +25,11 @@ def client(app):
     return app.test_client()
 
 
-def login(client, username):
-    return client.post("/login", data={"username": username, "password": "password123"})
+def login(client, username, name=None):
+    """Sign in as Authelia does: every request of this client carries Remote-User and
+    Remote-Name. In the testing configuration "editor" and "editor2" may change data."""
+    client.environ_base["HTTP_REMOTE_USER"] = username
+    client.environ_base["HTTP_REMOTE_NAME"] = name or username.title()
 
 
 def query(app, fn):

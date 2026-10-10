@@ -31,7 +31,8 @@ nieuwe documentatie "PDC".
   voorbeeldgegevens gebruiken verzonnen namen, geen echte tolken of toewijzingen.
 - PDC schrijft nooit rechtstreeks in de databank van spic. PDC hangt uitdrukkelijk af van Authelia (identiteit) en van
   spic (vergaderingen en rechten).
-- De databank is SQLite (beslist op 10 oktober 2026); het prototype van fase 1 gebruikt nog MySQL.
+- De databank is SQLite in WAL-modus (beslist en gebouwd op 10 oktober 2026). Aanmelden gaat via de koppen van Authelia;
+  tests melden aan met `login(client, gebruiker)` uit `tests/conftest.py`.
 
 ## Uitrollen
 

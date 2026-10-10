@@ -1,8 +1,8 @@
-from datetime import date, datetime, timedelta
+from datetime import date, timedelta
 
 from conftest import login, query
 from extensions import db
-from models import Interpreter, Meeting, SystemLock
+from models import Interpreter, Meeting, User
 
 
 def add_interpreter(client, first, last, email, bureau=""):
@@ -27,15 +27,45 @@ def interpreter_count(app):
     return query(app, lambda: Interpreter.query.count())
 
 
-def test_login_required(client):
+def test_without_authelia_nobody_gets_in(client):
     response = client.get("/")
-    assert response.status_code == 302
-    assert "/login" in response.headers["Location"]
+    assert response.status_code == 401
+    assert b"not signed in" in response.data
+    assert client.get("/interpreters").status_code == 401
+    assert client.post("/interpreters/reorder", json={"order": []}).status_code == 401
 
 
-def test_bad_login(client):
-    response = client.post("/login", data={"username": "editor", "password": "wrong"})
-    assert b"Invalid username or password" in response.data
+def test_identity_comes_from_authelia(app, client):
+    login(client, "anna", "Anna Peeters")
+    page = client.get("/").data.decode()
+    assert "Anna Peeters" in page
+    assert 'href="https://login.infracriv.net/logout"' in page
+    client.get("/interpreters")
+    assert query(app, lambda: User.query.filter_by(username="anna").count()) == 1
+
+    # Authelia sends UTF-8, Werkzeug reads Latin-1: the name must still arrive intact.
+    login(client, "anna", "Ann\u00e9e".encode("utf-8").decode("latin-1"))
+    assert "Ann\u00e9e" in client.get("/").data.decode()
+    assert query(app, lambda: User.query.filter_by(username="anna").one().name) == "Ann\u00e9e"
+
+
+def test_rights_follow_the_list_of_editors(app, client):
+    login(client, "Editor")  # user ids are compared without regard to case
+    assert b">editor</span>" in client.get("/").data
+    add_interpreter(client, "A", "B", "a@example.org")
+    assert interpreter_count(app) == 1
+
+    login(client, "someone-else")
+    assert b">viewer</span>" in client.get("/").data
+
+
+def test_development_mode_uses_a_fixed_user(app, client):
+    app.config.update(PDC_AUTH_MODE="dev", PDC_DEV_USER="dev", PDC_DEV_NAME="Dev Eloper", PDC_EDITORS="dev")
+    try:
+        page = client.get("/").data.decode()
+        assert "Dev Eloper" in page and ">editor</span>" in page
+    finally:
+        app.config.update(PDC_AUTH_MODE="authelia", PDC_EDITORS="editor,editor2")
 
 
 def test_pages_render(app, client):
@@ -116,41 +146,65 @@ def test_viewer_cannot_change_data(app, client):
     response = add_interpreter(client, "A", "B", "a@example.org")
     assert response.status_code == 302
     assert interpreter_count(app) == 0
-    assert client.post("/system/lock", json={}).status_code == 403
 
 
-def test_editing_lock_blocks_other_editors(app):
+def test_there_is_no_editing_lock(app):
     first, second = app.test_client(), app.test_client()
     login(first, "editor")
     login(second, "editor2")
-
-    assert first.post("/system/lock", json={}).get_json() == {"success": True}
-    assert b"Unlock system" in first.get("/").data
-    assert b"Locked by editor" in second.get("/").data
-
-    assert second.post("/system/lock", json={}).status_code == 409
-    add_interpreter(second, "A", "B", "a@example.org")
-    assert interpreter_count(app) == 0
+    assert first.post("/system/lock", json={}).status_code == 404
     add_interpreter(first, "A", "B", "a@example.org")
-    assert interpreter_count(app) == 1
-
-    assert second.post("/system/unlock", json={}).status_code == 404
-    assert first.post("/system/unlock", json={}).get_json() == {"success": True}
     add_interpreter(second, "C", "D", "c@example.org")
     assert interpreter_count(app) == 2
+    assert b"Lock system" not in first.get("/").data
 
 
-def test_stale_lock_expires(app, client):
-    def add_old_lock():
-        db.session.add(SystemLock(locked_by_user_id=1, lock_type="editing",
-                                  created_at=datetime.utcnow() - timedelta(days=1)))
-        db.session.commit()
+def edit_form(client, url):
+    """The loaded_at value of an edit form, as the browser would send it back."""
+    page = client.get(url).data.decode()
+    return page.split('name="loaded_at" value="')[1].split('"')[0]
 
-    query(app, add_old_lock)
-    login(client, "editor2")
-    add_interpreter(client, "A", "B", "a@example.org")
-    assert interpreter_count(app) == 1
-    assert query(app, lambda: SystemLock.query.count()) == 0
+
+def test_an_outdated_form_is_caught_when_saved(app):
+    first, second = app.test_client(), app.test_client()
+    login(first, "editor")
+    login(second, "editor2")
+    add_interpreter(first, "Anna", "Peeters", "anna@example.org")
+    url = "/interpreters/1/edit"
+    loaded_first, loaded_second = edit_form(first, url), edit_form(second, url)
+
+    fields = {"first_name": "Anna", "last_name": "Peeters-Janssens", "email": "anna@example.org"}
+    assert first.post(url, data=dict(fields, loaded_at=loaded_first)).status_code == 302
+
+    response = second.post(url, data=dict(fields, last_name="Other", loaded_at=loaded_second))
+    assert b"Someone else changed this interpreter" in response.data
+    assert b"Peeters-Janssens" in response.data  # the current details are shown
+    assert query(app, lambda: Interpreter.query.one().last_name) == "Peeters-Janssens"
+
+    # Saving again from the refreshed form works.
+    response = second.post(url, data=dict(fields, last_name="Other", loaded_at=edit_form(second, url)))
+    assert response.status_code == 302
+    assert query(app, lambda: Interpreter.query.one().last_name) == "Other"
+
+
+def test_an_outdated_meeting_form_is_caught(app, client):
+    login(client, "editor")
+    add_meeting(client)
+    url = "/meetings/1/edit"
+    loaded = edit_form(client, url)
+    data = {"name": "Bureau", "date": (date.today() + timedelta(days=3)).isoformat(), "time": "12:15",
+            "estimated_duration": "2", "interpreters_needed": "1", "location": "Room 1",
+            "category": "parliament"}
+    assert client.post(url, data=dict(data, location="Room 2", loaded_at=loaded)).status_code == 302
+    response = client.post(url, data=dict(data, location="Room 3", loaded_at=loaded))
+    assert b"Someone else changed this meeting" in response.data
+    assert query(app, lambda: Meeting.query.one().location) == "Room 2"
+
+
+def test_sqlite_enforces_foreign_keys(app):
+    def pragma():
+        return db.session.execute(db.text("PRAGMA foreign_keys")).scalar()
+    assert query(app, pragma) == 1
 
 
 def test_404_page_for_logged_in_user(client):
@@ -164,13 +218,12 @@ def test_csrf_is_enforced(app):
     app.config["WTF_CSRF_ENABLED"] = True
     try:
         client = app.test_client()
-        response = client.post("/login", data={"username": "editor", "password": "password123"})
-        assert response.status_code == 400
-        page = client.get("/login").data.decode()
+        login(client, "editor")
+        fields = {"first_name": "A", "last_name": "B", "email": "a@example.org"}
+        assert client.post("/interpreters/add", data=fields).status_code == 400
+        page = client.get("/interpreters/add").data.decode()
         token = page.split('name="csrf_token" value="')[1].split('"')[0]
-        response = client.post("/login", data={
-            "username": "editor", "password": "password123", "csrf_token": token,
-        })
+        response = client.post("/interpreters/add", data=dict(fields, csrf_token=token))
         assert response.status_code == 302
     finally:
         app.config["WTF_CSRF_ENABLED"] = False

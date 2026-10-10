@@ -19,6 +19,7 @@
             </div>
             <div class="card-body">
                 <form method="POST">
+                    <input type="hidden" name="loaded_at" value="{{ interpreter.updated_at.isoformat() if interpreter.updated_at else '' }}">
                     {% with values = interpreter %}{% include "interpreters/_fields.html" %}{% endwith %}
 
                     <div class="alert alert-warning">

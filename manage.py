@@ -2,33 +2,21 @@
 """Setup and maintenance commands.
 
     python manage.py init-db         create the database tables
-    python manage.py create-user     add a user (prompts for the password)
-    python manage.py set-password    change a user's password
+    python manage.py backup FILE     write a consistent copy of the database to FILE
     python manage.py sample-data     add fictitious interpreters and meetings for testing
 
-The database is chosen by APP_CONFIG and the settings in .env (see README.md).
+The database is chosen by APP_CONFIG and the settings in .env (see README.md). There are no
+accounts to create: people are identified by Authelia (auth.py).
 """
 import argparse
-import getpass
+import os
+import sqlite3
 import sys
 from datetime import date, time, timedelta
-
-from werkzeug.security import generate_password_hash
 
 from app import app
 from extensions import db
 from models import Interpreter, Meeting, User
-
-
-def ask_password():
-    while True:
-        first = getpass.getpass("Password: ")
-        if len(first) < 8:
-            print("Use at least 8 characters.")
-            continue
-        if first == getpass.getpass("Repeat password: "):
-            return first
-        print("Passwords do not match, try again.")
 
 
 def init_db(args):
@@ -36,40 +24,30 @@ def init_db(args):
     print("Database tables created (existing tables are left untouched).")
 
 
-def create_user(args):
-    username = args.username or input("Username: ").strip()
-    email = args.email or input("Email: ").strip()
-    role = args.role or input("Role (editor/viewer): ").strip().lower()
-    if role not in ("editor", "viewer"):
-        sys.exit("Role must be 'editor' or 'viewer'.")
-    if User.query.filter((User.username == username) | (User.email == email)).first():
-        sys.exit("A user with this username or email already exists.")
-    user = User(
-        username=username,
-        email=email,
-        role=role,
-        password_hash=generate_password_hash(ask_password()),
-    )
-    db.session.add(user)
-    db.session.commit()
-    print("User '{}' created with role '{}'.".format(username, role))
-
-
-def set_password(args):
-    username = args.username or input("Username: ").strip()
-    user = User.query.filter_by(username=username).first()
-    if not user:
-        sys.exit("No user named '{}'.".format(username))
-    user.password_hash = generate_password_hash(ask_password())
-    db.session.commit()
-    print("Password changed for '{}'.".format(username))
+def backup(args):
+    """SQLite's own backup, which gives a consistent copy while PDC keeps running."""
+    url = db.engine.url
+    if url.get_backend_name() != "sqlite" or not url.database:
+        sys.exit("Backup works on the SQLite database file only.")
+    target = os.path.abspath(args.file)
+    if os.path.exists(target):
+        sys.exit("{} already exists; choose a new file.".format(target))
+    source = sqlite3.connect(url.database)
+    copy = sqlite3.connect(target)
+    with copy:
+        source.backup(copy)
+    copy.close()
+    source.close()
+    print("Database copied to {}.".format(target))
 
 
 def sample_data(args):
     """Fictitious data only - never put real interpreters' details in a repository."""
-    owner = User.query.filter_by(role="editor").first()
+    owner = User.query.filter_by(username="sample-data").first()
     if not owner:
-        sys.exit("Create an editor first: python manage.py create-user")
+        owner = User(username="sample-data", name="Sample data")
+        db.session.add(owner)
+        db.session.flush()
 
     if Interpreter.query.count() == 0:
         people = [
@@ -114,15 +92,9 @@ def main():
 
     commands.add_parser("init-db", help="create the database tables").set_defaults(func=init_db)
 
-    p = commands.add_parser("create-user", help="add a user")
-    p.add_argument("--username")
-    p.add_argument("--email")
-    p.add_argument("--role", choices=["editor", "viewer"])
-    p.set_defaults(func=create_user)
-
-    p = commands.add_parser("set-password", help="change a user's password")
-    p.add_argument("--username")
-    p.set_defaults(func=set_password)
+    p = commands.add_parser("backup", help="copy the database to a new file")
+    p.add_argument("file")
+    p.set_defaults(func=backup)
 
     commands.add_parser("sample-data", help="add fictitious test data").set_defaults(func=sample_data)
 

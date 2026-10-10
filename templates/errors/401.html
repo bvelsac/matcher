@@ -1,0 +1,23 @@
+{% extends "base.html" %}
+
+{% block title %}Not signed in - PDC{% endblock %}
+
+{% block body_class %}screen-login{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center">
+    <div class="col-md-6 col-lg-5">
+        <div class="card mt-5">
+            <div class="card-header login-header">
+                <h1 class="pdc-brand mb-0">PDC</h1>
+                <span class="pdc-brand-full">Prestatiedatabank voor Conferentietolken</span>
+                <p>You are not signed in.</p>
+            </div>
+            <div class="card-body text-center">
+                <p>PDC is opened through the Parliament's login (Authelia). Open PDC again from its usual address to sign in.</p>
+                <a href="{{ url_for('dashboard') }}" class="btn btn-primary"><i class="bi bi-box-arrow-in-right"></i> Open PDC</a>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

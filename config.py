@@ -1,43 +1,37 @@
 """Application configuration.
 
 Which configuration is used is chosen with the APP_CONFIG environment
-variable: "production" (default, MySQL), "development" (SQLite file) or
-"testing" (in-memory SQLite). Values can be set in a .env file.
+variable: "production" (default), "development" or "testing". Values can be
+set in a .env file.
+
+The database is SQLite (decided 10 October 2026): one file, in WAL mode, like
+spic. In production it lives at /data/pdc.db, on the volume of the container.
+
+People are identified by Authelia (functional analysis 9, point 3): Caddy
+passes the headers Remote-User and Remote-Name after Authelia has checked the
+login. See auth.py.
 """
 import os
-from datetime import timedelta
-from urllib.parse import quote_plus
 
 from dotenv import load_dotenv
 
 load_dotenv()
 
 
-def _mysql_uri():
-    user = os.environ.get("MYSQL_USER", "interpreter_user")
-    password = quote_plus(os.environ.get("MYSQL_PASSWORD", ""))
-    host = os.environ.get("MYSQL_HOST", "localhost")
-    port = os.environ.get("MYSQL_PORT", "3306")
-    database = os.environ.get("MYSQL_DATABASE", "interpreter_system")
-    return "mysql+pymysql://{}:{}@{}:{}/{}?charset=utf8mb4".format(
-        user, password, host, port, database
-    )
-
-
 class Config:
     SECRET_KEY = os.environ.get("SECRET_KEY") or None  # required in production, see app.py
 
-    SQLALCHEMY_DATABASE_URI = os.environ.get("DATABASE_URL") or _mysql_uri()
+    SQLALCHEMY_DATABASE_URI = os.environ.get("DATABASE_URL") or "sqlite:////data/pdc.db"
     SQLALCHEMY_TRACK_MODIFICATIONS = False
-    SQLALCHEMY_ENGINE_OPTIONS = {"pool_recycle": 280, "pool_pre_ping": True}
 
-    PERMANENT_SESSION_LIFETIME = timedelta(hours=24)
-    REMEMBER_COOKIE_DURATION = timedelta(days=7)
-
-    # An editing lock that is not released is dropped automatically after this time.
-    SYSTEM_LOCK_TIMEOUT = timedelta(
-        hours=int(os.environ.get("SYSTEM_LOCK_TIMEOUT_HOURS", "4"))
-    )
+    # "authelia" (trust the headers Caddy passes on) or "dev" (a fixed user, for development)
+    PDC_AUTH_MODE = os.environ.get("PDC_AUTH_MODE", "authelia")
+    PDC_DEV_USER = os.environ.get("PDC_DEV_USER", "developer")
+    PDC_DEV_NAME = os.environ.get("PDC_DEV_NAME", "Developer")
+    # User ids (Authelia) that may change data. Interim, until spic gives PDC its list of
+    # invoerders and beheerders (functional analysis 9, point 3); everyone else can only read.
+    PDC_EDITORS = os.environ.get("PDC_EDITORS", "")
+    PDC_LOGOUT_URL = os.environ.get("PDC_LOGOUT_URL", "https://login.infracriv.net/logout")
 
 
 class ProductionConfig(Config):
@@ -47,18 +41,18 @@ class ProductionConfig(Config):
 class DevelopmentConfig(Config):
     DEBUG = True
     SECRET_KEY = os.environ.get("SECRET_KEY") or "development-only-secret"
-    SQLALCHEMY_DATABASE_URI = (
-        os.environ.get("DATABASE_URL") or "sqlite:///interpreter_system_dev.db"
-    )
-    SQLALCHEMY_ENGINE_OPTIONS = {}
+    SQLALCHEMY_DATABASE_URI = os.environ.get("DATABASE_URL") or "sqlite:///pdc_dev.db"
+    PDC_AUTH_MODE = os.environ.get("PDC_AUTH_MODE", "dev")
+    PDC_EDITORS = os.environ.get("PDC_EDITORS", Config.PDC_DEV_USER)
 
 
 class TestingConfig(Config):
     TESTING = True
     SECRET_KEY = "testing"
     SQLALCHEMY_DATABASE_URI = "sqlite://"
-    SQLALCHEMY_ENGINE_OPTIONS = {}
     WTF_CSRF_ENABLED = False
+    PDC_AUTH_MODE = "authelia"
+    PDC_EDITORS = "editor,editor2"
 
 
 config = {

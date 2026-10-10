@@ -1,4 +1,4 @@
-"""Database models for Phase 1: users, interpreters, meetings and the editing lock.
+"""Database models for Phase 1: users, interpreters and meetings.
 
 Phase 2 adds the availability and booking model described in
 docs/functional-analysis.md (time slots, availability declarations,
@@ -20,18 +20,19 @@ CATEGORY_LABELS = dict(MEETING_CATEGORIES)
 
 
 class User(UserMixin, db.Model):
-    """A person who logs in: editors change data, viewers only read."""
+    """A person as Authelia identifies them, recorded the first time they are seen (auth.py).
+
+    The role is not stored: it is worked out on every request (auth.role_for).
+    """
 
     __tablename__ = "users"
 
     id = db.Column(db.Integer, primary_key=True)
-    username = db.Column(db.String(80), unique=True, nullable=False)
-    email = db.Column(db.String(120), unique=True, nullable=False)
-    password_hash = db.Column(db.String(255), nullable=False)
-    role = db.Column(
-        db.Enum("editor", "viewer", name="user_roles"), default="viewer", nullable=False
-    )
+    username = db.Column(db.String(80), unique=True, nullable=False)  # Remote-User
+    name = db.Column(db.String(200), nullable=False, default="")       # Remote-Name
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
+
+    role = "viewer"  # set per request by auth.load_user_from_request
 
     @property
     def is_editor(self):
@@ -57,6 +58,7 @@ class Interpreter(db.Model):
     additional_languages = db.Column(db.Text)
     notes = db.Column(db.Text)
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
 
     @property
     def full_name(self):
@@ -103,20 +105,3 @@ class Meeting(db.Model):
 
     def __repr__(self):
         return "<Meeting {} on {}>".format(self.name, self.date)
-
-
-class SystemLock(db.Model):
-    """Editing lock: while one editor holds it, other editors cannot change data."""
-
-    __tablename__ = "system_locks"
-
-    id = db.Column(db.Integer, primary_key=True)
-    locked_by_user_id = db.Column(db.Integer, db.ForeignKey("users.id"), nullable=False)
-    # Unique, so two editors cannot take the same lock at the same moment.
-    lock_type = db.Column(db.String(50), unique=True, nullable=False)
-    created_at = db.Column(db.DateTime, default=datetime.utcnow)
-
-    locked_by_user = db.relationship("User", backref="system_locks")
-
-    def __repr__(self):
-        return "<SystemLock {}>".format(self.lock_type)

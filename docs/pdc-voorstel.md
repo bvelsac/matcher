@@ -32,10 +32,10 @@ gebouwd.
 | 8 | Logboek en historiek | Geen. Alleen `created_by`, `created_at`, `updated_at` | Een eigen, alleen aanvullend logboek met een momentopname van de vergadering bij elke toewijzing; een historiek van de kopie; twee werklijsten (§1.6) | Nieuwe tabellen (§2) |
 | 9 | Annuleren | Geen annulering; FA 1.1 annuleerde de toewijzingen automatisch | Een annulering wist of annuleert nooit een toewijzing; de planner beslist (§5.4) | Werklijst "geannuleerd met toegewezen tolk" |
 | 10 | Bijwerken en achtergrondtaak | Alleen gunicorn, geen achtergrondtaak | Bijwerken bij gebruik én door een achtergrondtaak, met een slot en een nachtelijke vergelijking (§1.3) | Een tweede proces nodig; nog niet bouwen |
-| 11 | Vergrendeling | Het hele systeem 4 uur op slot terwijl één editor toewijst | Beginuur, zaal en annulering direct en zonder vergrendeling, ook door een ander (§1.4) | Besloten: de vergrendeling vervalt (§4) |
-| 12 | Aanmelding en rollen | Eigen accounts met wachtwoord (editor, viewer), na de aanmelding bij Authelia | Alle invoerders en beheerders van spic mogen PDC beheren, geen aparte rol; de naam van de persoon gaat mee naar de schrijfroute | Besloten: identiteit van Authelia, rechten uit spic (§5) |
+| 11 | Vergrendeling | Het hele systeem 4 uur op slot terwijl één editor toewijst | Beginuur, zaal en annulering direct en zonder vergrendeling, ook door een ander (§1.4) | Gebouwd op 10 oktober 2026: de vergrendeling is weg; een verouderd formulier wordt bij het opslaan opgevangen |
+| 12 | Aanmelding en rollen | Eigen accounts met wachtwoord (editor, viewer), na de aanmelding bij Authelia | Alle invoerders en beheerders van spic mogen PDC beheren, geen aparte rol; de naam van de persoon gaat mee naar de schrijfroute | Gebouwd op 10 oktober 2026: identiteit uit Authelia, geen wachtwoorden meer; rechten voorlopig via `PDC_EDITORS` tot spic de lijst geeft |
 | 13 | Naam | "Interpreter Management" in de schermen, "Interpreter Mission Management System" in de code en de documenten; `matcher` als repository, compose-project, image (`ghcr.io/bvelsac/matcher`), volume (`matcher_db`) en subdomein (`matcher.infracriv.net`) | PDC, Prestatiedatabank voor Conferentietolken | De schermen heten PDC sinds de stijl (10 oktober 2026); documenten en code nog bij te werken. De namen op het platform (repository, image, volume, subdomein) zijn de keuze van de gebruiker; `CAL` alleen op uitdrukkelijke vraag |
-| 14 | Databank | MySQL 8.0.40 in een eigen container | SQLite (besloten op 10 oktober 2026) | Overstappen (§3) |
+| 14 | Databank | MySQL 8.0.40 in een eigen container | SQLite (besloten op 10 oktober 2026) | Gebouwd op 10 oktober 2026: SQLite in WAL-modus, één container, `manage.py backup`; migraties volgen met het nieuwe model |
 | 15 | Python | Vastgezet op 3.8, "dezelfde versie als de productieserver" | PDC draait in Docker op dezelfde server als spic; spic gebruikt Python 3.12. Python 3.8 krijgt sinds oktober 2024 geen veiligheidsupdates meer | Naar Python 3.12 (image en vastgezette versies) |
 | 16 | Uitrol | `git pull` en `docker compose up -d --build` op de server, image met tag `latest` | Eigen compose-project met eigen versie en tag; uitrollen via GitHub Actions; een sessie verbindt nooit zelf met de server | Een workflow en versienummers, zoals `spic.yml` in `crystalclear`. In `CAL` is er nog geen route voor `matcher` of PDC (alleen `jk`, `spic` en `um`), en de README noemt een DNS-record bij Cloudflare: beide alleen op uitdrukkelijke vraag van de gebruiker |
 | 17 | Tijden | Opgeslagen en getoond in UTC (de vergrendeling toont "UTC") | Tijden van spic zijn Brusselse tijd | Vergaderingen in Brusselse tijd zoals spic; tijdstippen van het logboek bewaren in UTC en tonen in Brusselse tijd |
@@ -124,7 +124,8 @@ bij of de factuur binnen is (met het factuurnummer, of alleen "ok"), of dat de t
 Een bureau factureert per maand voor al zijn tolken. Daarom in de FA:
 
 - een tabel `invoices` (FA §2.9): wie factureert, referentie, datum van ontvangst, periode, nagekeken (wanneer en door
-  wie; "ok" in de spreadsheet betekent wellicht "ontvangen en nagekeken", na te vragen bij het personeel), notities. Een positie
+  wie; "ok" in de spreadsheet geldt voorlopig als "ontvangen en nagekeken"), notities. De spreadsheet wordt niet
+  ingeladen: het team tikt over wat nodig is. Een positie
   verwijst naar haar factuur (`booking_positions.invoice_id`); de planner noteert een factuur één keer en koppelt in één
   handeling alle posities die ze dekt;
 - per tolk `engagement`: `invoice` (de tolk werkt op factuur) of `occasional_work` (de tolk werkt via het systeem van

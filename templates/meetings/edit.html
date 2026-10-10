@@ -19,6 +19,7 @@
             </div>
             <div class="card-body">
                 <form method="POST">
+                    <input type="hidden" name="loaded_at" value="{{ meeting.updated_at.isoformat() if meeting.updated_at else '' }}">
                     {% with values = meeting %}{% include "meetings/_fields.html" %}{% endwith %}
 
                     <div class="d-flex justify-content-between">

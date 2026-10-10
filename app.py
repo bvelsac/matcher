@@ -1,6 +1,6 @@
-"""Interpreter Mission Management System - Phase 1.
+"""PDC - Prestatiedatabank voor Conferentietolken. Phase 1 screens.
 
-Users, interpreters (with priority order), meetings and the editing lock.
+Interpreters (with priority order) and meetings, behind Authelia (auth.py).
 Run with `python app.py` for local development or `gunicorn app:app` in production.
 """
 import os
@@ -8,15 +8,14 @@ from datetime import date, datetime
 from functools import wraps
 
 from flask import Flask, flash, jsonify, redirect, render_template, request, url_for
-from flask_login import current_user, login_required, login_user, logout_user
+from flask_login import current_user, login_required
+from sqlalchemy import event
+from sqlalchemy.engine import Engine
 from sqlalchemy.exc import IntegrityError
-from werkzeug.security import check_password_hash
 
 from config import config
 from extensions import csrf, db, login_manager
-from models import CATEGORY_LABELS, MEETING_CATEGORIES, Interpreter, Meeting, SystemLock, User
-
-LOCK_TYPE = "editing"
+from models import CATEGORY_LABELS, MEETING_CATEGORIES, Interpreter, Meeting
 
 app = Flask(__name__)
 app.config.from_object(config[os.environ.get("APP_CONFIG", "production")])
@@ -29,28 +28,33 @@ if not app.config.get("SECRET_KEY"):
 db.init_app(app)
 csrf.init_app(app)
 login_manager.init_app(app)
-login_manager.login_view = "login"
-login_manager.login_message = "Please log in to access this page."
+
+import auth  # noqa: E402,F401  (registers the request loader)
 
 
-@login_manager.user_loader
-def load_user(user_id):
-    return db.session.get(User, int(user_id))
+@event.listens_for(Engine, "connect")
+def _sqlite_pragmas(dbapi_connection, connection_record):
+    """WAL lets the web workers and later the background task read while one writes;
+    foreign keys are off by default in SQLite; wait instead of failing when locked."""
+    if type(dbapi_connection).__module__.startswith("sqlite3"):
+        cursor = dbapi_connection.cursor()
+        cursor.execute("PRAGMA journal_mode=WAL")
+        cursor.execute("PRAGMA foreign_keys=ON")
+        cursor.execute("PRAGMA busy_timeout=10000")
+        cursor.close()
+
+
+@login_manager.unauthorized_handler
+def not_signed_in():
+    """Without Authelia's headers nobody gets in. Behind Caddy this does not happen."""
+    if request.is_json:
+        return jsonify({"error": "Not signed in."}), 401
+    return render_template("errors/401.html"), 401
 
 
 # ---------------------------------------------------------------------------
-# Editing lock and permissions
+# Permissions
 # ---------------------------------------------------------------------------
-
-def current_lock():
-    """Return the active editing lock, dropping it if it has expired."""
-    lock = SystemLock.query.filter_by(lock_type=LOCK_TYPE).first()
-    if lock and datetime.utcnow() - lock.created_at > app.config["SYSTEM_LOCK_TIMEOUT"]:
-        db.session.delete(lock)
-        db.session.commit()
-        return None
-    return lock
-
 
 def _refuse(message, status):
     if request.is_json:
@@ -60,38 +64,31 @@ def _refuse(message, status):
 
 
 def editor_required(view):
-    """Only editors, and only when no other editor holds the editing lock."""
+    """Only editors change data. There is no editing lock (decided 10 October 2026):
+    a form that is out of date is caught when it is saved (changed_since_loaded)."""
 
     @wraps(view)
     @login_required
     def wrapped(*args, **kwargs):
         if not current_user.is_editor:
             return _refuse("You do not have permission to change data.", 403)
-        lock = current_lock()
-        if lock and lock.locked_by_user_id != current_user.id:
-            return _refuse(
-                "The system is locked for editing by {} since {:%H:%M}.".format(
-                    lock.locked_by_user.username, lock.created_at
-                ),
-                423,
-            )
         return view(*args, **kwargs)
 
     return wrapped
 
 
+def changed_since_loaded(record):
+    """True when someone saved the record after this form was loaded."""
+    loaded = request.form.get("loaded_at", "")
+    return bool(loaded) and record.updated_at is not None and record.updated_at.isoformat() != loaded
+
+
 @app.context_processor
 def inject_globals():
-    lock = None
-    if current_user.is_authenticated:
-        try:
-            lock = current_lock()
-        except Exception:  # never let the lock lookup break page rendering
-            db.session.rollback()
     return {
         "today": date.today(),
-        "system_lock": lock,
         "meeting_categories": MEETING_CATEGORIES,
+        "logout_url": app.config["PDC_LOGOUT_URL"],
     }
 
 
@@ -150,30 +147,6 @@ def renumber_priorities():
 # Authentication and dashboard
 # ---------------------------------------------------------------------------
 
-@app.route("/login", methods=["GET", "POST"])
-def login():
-    if current_user.is_authenticated:
-        return redirect(url_for("dashboard"))
-    if request.method == "POST":
-        user = User.query.filter_by(username=_clean("username")).first()
-        if user and check_password_hash(user.password_hash, request.form.get("password", "")):
-            login_user(user)
-            next_page = request.args.get("next")
-            if next_page and next_page.startswith("/") and not next_page.startswith("//"):
-                return redirect(next_page)
-            return redirect(url_for("dashboard"))
-        flash("Invalid username or password.", "error")
-    return render_template("login.html")
-
-
-@app.route("/logout")
-@login_required
-def logout():
-    logout_user()
-    flash("You have been logged out.", "info")
-    return redirect(url_for("login"))
-
-
 @app.route("/")
 @login_required
 def dashboard():
@@ -224,6 +197,10 @@ def add_interpreter():
 def edit_interpreter(id):
     interpreter = db.get_or_404(Interpreter, id)
     if request.method == "POST":
+        if changed_since_loaded(interpreter):
+            flash("Someone else changed this interpreter while you were editing. "
+                  "These are the current details; enter your changes again.", "error")
+            return render_template("interpreters/edit.html", interpreter=interpreter)
         for field, value in _interpreter_fields().items():
             setattr(interpreter, field, value)
         try:
@@ -300,6 +277,10 @@ def add_meeting():
 def edit_meeting(id):
     meeting = db.get_or_404(Meeting, id)
     if request.method == "POST":
+        if changed_since_loaded(meeting):
+            flash("Someone else changed this meeting while you were editing. "
+                  "These are the current details; enter your changes again.", "error")
+            return render_template("meetings/edit.html", meeting=meeting)
         try:
             fields = _meeting_fields()
         except ValueError as error:
@@ -324,44 +305,13 @@ def delete_meeting(id):
 
 
 # ---------------------------------------------------------------------------
-# Editing lock
-# ---------------------------------------------------------------------------
-
-@app.route("/system/lock", methods=["POST"])
-@login_required
-def lock_system():
-    if not current_user.is_editor:
-        return jsonify({"error": "Permission denied."}), 403
-    lock = current_lock()
-    if lock:
-        if lock.locked_by_user_id == current_user.id:
-            return jsonify({"success": True})
-        return jsonify({"error": "Already locked by {}.".format(lock.locked_by_user.username)}), 409
-    db.session.add(SystemLock(locked_by_user_id=current_user.id, lock_type=LOCK_TYPE))
-    try:
-        db.session.commit()
-    except IntegrityError:  # another editor took the lock at the same moment
-        db.session.rollback()
-        return jsonify({"error": "Another editor just locked the system."}), 409
-    return jsonify({"success": True})
-
-
-@app.route("/system/unlock", methods=["POST"])
-@login_required
-def unlock_system():
-    lock = SystemLock.query.filter_by(
-        lock_type=LOCK_TYPE, locked_by_user_id=current_user.id
-    ).first()
-    if not lock:
-        return jsonify({"error": "You do not hold the lock."}), 404
-    db.session.delete(lock)
-    db.session.commit()
-    return jsonify({"success": True})
-
-
-# ---------------------------------------------------------------------------
 # Errors
 # ---------------------------------------------------------------------------
+
+@app.errorhandler(401)
+def unauthorized_error(error):
+    return render_template("errors/401.html"), 401
+
 
 @app.errorhandler(404)
 def not_found_error(error):

@@ -60,11 +60,9 @@ def page(browser):
 
 
 def log_in(page, server, username="editor"):
-    page.goto(server + "/login")
-    page.fill("#username", username)
-    page.fill("#password", "password123")
-    page.click("button[type=submit]")
-    page.wait_for_url(server + "/")
+    """Sign in as Authelia does: every request carries Remote-User and Remote-Name."""
+    page.set_extra_http_headers({"Remote-User": username, "Remote-Name": username.title()})
+    page.goto(server + "/")
 
 
 # Relative luminance and contrast ratio (WCAG 2.x), computed in the page.
@@ -82,10 +80,11 @@ CONTRAST_JS = """
 """
 
 
-def test_login_page_has_the_pdc_look(page, server):
-    page.goto(server + "/login")
+def test_signed_out_page_has_the_pdc_look(page, server):
+    response = page.goto(server + "/")
 
-    assert page.title() == "Login - PDC"
+    assert response.status == 401
+    assert page.title() == "Not signed in - PDC"
     body = page.evaluate("""() => {
         const s = getComputedStyle(document.body);
         const eye = getComputedStyle(document.body, '::before');

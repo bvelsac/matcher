@@ -1,5 +1,17 @@
 # Changelog
 
+## 0.2.0 - PDC, step 2 (not tagged)
+
+- **Name and look**: the screens are called PDC and follow `docs/visual-style.md` (Arial, a
+  pixelated background and an accent colour per screen, the bar at the bottom).
+- **SQLite** instead of MySQL, in WAL mode, one container with the database on a volume;
+  `manage.py backup` makes a consistent copy. The MySQL test data were fictitious.
+- **Authelia**: identity from the headers Caddy passes on; no passwords, no login page, no
+  `create-user`. Who may change data: `PDC_EDITORS`, until spic provides its list.
+- **No editing lock**: an edit form saved after someone else changed the record is refused,
+  with the current details shown.
+- Browser tests (Playwright) for the style and the bottom bar.
+
 ## 0.1.0 - Phase 1
 
 First version in a repository. Compared with the code shown in the chat, these problems
