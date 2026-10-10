@@ -19,7 +19,8 @@
 > rights taken from spic, code in English (9, points 3 and 11). Also added, after the planner's
 > spreadsheet for 2026-2027: invoices (new 2.9), invoice or occasional work (Dimona) per interpreter, the forfait of a
 > booking, when a cancellation was passed on to the interpreter, and a default number of
-> interpreters per meeting (9, point 17).
+> interpreters per meeting (9, point 17); and the instructions for booking of September 2026
+> (4.5).
 >
 > **1.1:** a booking is now a bucket of positions, one per interpreter, so that the
 > interpreters of one bureau booking can each be dispatched to meetings independently
@@ -190,6 +191,7 @@ Time slots exist independently of meetings. We ask interpreters "Can you work Mo
 | `declaration_timestamp` | DateTime | Required | When interpreter submitted response |
 | `source` | String | Required | Data source identifier (e.g., "Q4-2025-Quarterly-Form") |
 | `notes` | Text | Optional | Any conditions or notes from interpreter |
+| `leaves_at_end` | Boolean | Required, default FALSE | The interpreter says they must leave right at the end of the assignment. Set by the planner from the notes; such an availability is skipped (BR-INS-005) |
 
 **Business Rules**:
 - **BR-AVL-001**: For INDIVIDUAL interpreters, quantity_available is typically 0 or 1
@@ -225,7 +227,7 @@ An availability says "I CAN work" but not "I WILL work". Transformation from ava
 | `quantity_booked` | Integer | Derived | Number of ACTIVE positions in this booking |
 | `status` | Enum | Required | PROPOSED, CONFIRMED, COMPLETED, CANCELLED |
 | `booking_reason` | String | Optional | Why booked if no meetings assigned yet |
-| `forfait_hours` | Integer | Required, 3 or 4 | The forfait the booking is paid on: everyone works on forfaits of 3 or 4 hours (the user, 10 October 2026; "forfait 3u" in the spreadsheet). Overtime is added per half hour, per position (BR-BKG-009) |
+| `forfait_hours` | Integer | Required, 3 or 4, default 4 | The forfait the booking is paid on: everyone works on forfaits of 3 or 4 hours (the user, 10 October 2026; "forfait 3u", later "bloc 3" in the spreadsheet). When in doubt, four hours (BR-INS-002). Overtime is added per half hour, per position (BR-BKG-009) |
 | `notes` | Text | Optional | Administrative notes, override reasons |
 | `created_at` | DateTime | System-generated | When booking created |
 | `updated_at` | DateTime | System-maintained | Last modification |
@@ -657,6 +659,10 @@ FOR each availability IN sorted_by_priority:
     IF remaining_need <= 0:
         BREAK
     
+    IF availability.leaves_at_end:
+        RECORD skip (interpreter, reason "must leave at the end of the assignment")
+        CONTINUE                                   # BR-INS-005: take the next in the ranking
+
     capacity = availability.quantity_available
                - positions already booked for this interpreter in this slot
     can_book = MIN(capacity, remaining_need)
@@ -773,6 +779,31 @@ RETURN positions_created, remaining_need
 - The positions of one bureau booking can be dispatched to different meetings
 - If Meeting A cancels: the planner cancels its assignments (never automatically, 5.4) and keeps the positions, which become available for other meetings
 - If a whole booking is no longer needed: Cancel booking (all positions and assignments also cancelled)
+
+### 4.5 Instructions for Booking (September 2026)
+
+Instructions the user sent to the team at the start of September 2026, to prevent difficult situations. PDC follows them by default.
+
+**BR-INS-001: Three or Four Hours, Always Stated**
+- Every booking states whether it is for three or four hours (forfait_hours, 2.4), and so does every confirmation. In the spreadsheet this is the note "bloc 3" or "bloc 4" next to the time (seen from week 42 on; earlier weeks say "forfait 3u")
+
+**BR-INS-002: When in Doubt, Four Hours**
+- If there is any doubt about the length, the booking is for four hours. PDC proposes four hours; three hours is an explicit choice of the planner
+
+**BR-INS-003: No End Time towards the Interpreters**
+- Out of caution, nothing PDC sends or shows to interpreters predicts when the meeting ends: confirmations give the start time and the three or four hours, never an expected end. The expected end stays internal (2.7)
+
+**BR-INS-004: The Start Is the Start of the Meeting**
+- A booking starts at the start time of the meeting it is made for. When the start is not known yet (a meeting "after another meeting", 2.7), the planner sets it when it is known
+
+**BR-INS-005: Interpreters Who Must Leave on Time Are Skipped**
+- An interpreter who says they must leave right at the end of the assignment is skipped, because a meeting can always run over (the tender specifications say so); the next one in the ranking gets the booking. The skip and its reason are recorded, so the priority order stays documented (BR-BOOK-005)
+
+**BR-INS-006: The Meeting Is for Information**
+- The meeting is mentioned in the call for information only. The Parliament pays for a service of three or four hours, whatever the committee, and can deploy the interpreter on the spot at another meeting as needed: the booking is the commitment, the meeting assignment can change within the block (2.4, 2.6, 3.2)
+
+**BR-INS-007: The Overrun Clause Stands Out**
+- Confirmations show the clause "De opdrachtnemer verbindt zich ertoe te tolken tot aan het einde van de betrokken vergadering, zelfs in geval van overschrijding van de aanvankelijke geplande tijdsduur van de betrokken vergadering" in a box that stands out (another colour or place than the rest of the text)
 
 ---
 
@@ -1215,7 +1246,7 @@ The system enforces legal priority obligations while providing operational flexi
 
 Not yet covered by this analysis:
 
-1. **Confirmations**: the text per interpreter for a chosen period (default: a week starting Monday). Only mentioned in passing in scenario 6.1.
+1. **Confirmations**: the text per interpreter for a chosen period (default: a week starting Monday). Only mentioned in passing in scenario 6.1. Known requirements (4.5): the three or four hours, the start time of the meeting, the meeting for information only, no expected end, and the overrun clause in a box that stands out.
 2. **Weekly overview for HR and monthly overview of prestations per interpreter**: referred to, not defined.
 3. **Users, roles and the editing lock**:
    - *Editing lock* (decided 10 October 2026): **the editing lock goes.** Phase 1 locks the whole system for 4 hours while one editor dispatches, which conflicts with 1.4 (start time, room and cancellation at once, without a lock, also by another user). Instead, every action is one small transaction that checks, when saving, that the state still holds (the position is still free, the meeting still exists); if not, the user gets a clear message and the new state (then, now, your input). Conflicts only arise when two planners change the same position or meeting at the same moment, and the assignment log shows who did what.
@@ -1237,9 +1268,9 @@ Not yet covered by this analysis:
     - Meetings are spic's committee codes, plenary sessions and (extended) bureau, plus events that are not in spic (an animation in the hemicycle, a visit): confirms 1.1 and the own meetings.
     - Times are free text ("09.30 - 12.30", "11.00", "14.30 - finish", "?"): end times are often unknown, as in 2.7.
     - "FACT. of DIM" next to an interpreter holds the invoice number, "ok", "DIM" or "DIM / ok": invoice or occasional work with a Dimona declaration, a property of the interpreter (2.1, 2.5), and the invoice (2.9). Next to a meeting it sometimes holds one invoice number for the whole meeting.
-    - Next to the time: "forfait 3u", "forfait 3u + overuren": the forfait of the booking, 3 or 4 hours for everyone, with overtime added per half hour (2.4, BR-BKG-009). "bloc 3" and "bloc 4" appear only in week 42, on meetings of 3 and 4 hours (e.g. 9:00 - 12:00 "bloc 3"): probably the same forfait in a newer notation (to be confirmed).
+    - Next to the time: "forfait 3u", "forfait 3u + overuren": the forfait of the booking, 3 or 4 hours for everyone, with overtime added per half hour (2.4, BR-BKG-009). "bloc 3" and "bloc 4" appear from week 42 on, on meetings of 3 and 4 hours (e.g. 9:00 - 12:00 "bloc 3"): the booking of three or four hours that the instructions of September 2026 ask to state (4.5, BR-INS-001).
     - "annulation transmise dd/mm" next to an interpreter: when the cancellation was passed on (2.6).
     - "nom à confirmer": the bureau has not given the name yet (2.5, interpreter_name). Names struck through: an interpreter replaced or cancelled; PDC keeps that in the position's notes and the log. Cell comments note reasons ("ill", "time changed on 30/9") and invoice discrepancies ("only one interpreter charged on the September invoice").
     - A memo sheet holds a request from another department of the Parliament for interpreters at an event it organises, at the Parliament's expense (1.5).
 
-    Still open: whether "ok" means received and checked (to be confirmed with the staff); whether "bloc 3" and "bloc 4" are the forfait; and whether the bookings and invoices already in this spreadsheet for 2026-2027 must be imported into PDC, or PDC starts from a given week (spic's meetings arrive on their own).
+    Still open: whether "ok" means received and checked (to be confirmed with the staff); and whether the bookings and invoices already in this spreadsheet for 2026-2027 must be imported into PDC, or PDC starts from a given week (spic's meetings arrive on their own).

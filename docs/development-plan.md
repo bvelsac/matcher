@@ -141,6 +141,8 @@ open point 14).
 - Confirmation text generation
   - Per interpreter for defined period
   - Customizable date ranges (default: weekly from Monday)
+  - Three or four hours and the start time of the meeting; the meeting for information only; no
+    expected end; the overrun clause in a box that stands out (functional analysis 4.5)
 - Weekly overview for HR
 - Monthly overview per interpreter
 - Invoices and Dimona: an invoice (reference, date received, period) recorded once and linked
