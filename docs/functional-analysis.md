@@ -1,22 +1,102 @@
 # Functional Analysis
-## Interpreter Mission Management System
+## PDC - Prestatiedatabank voor Conferentietolken
 
-**Version:** 1.1  
-**Date:** October 2026  
+**Version:** 1.2  
+**Date:** 10 October 2026  
 **Document Type:** Conceptual Model & Business Rules
 
+> **1.2:** the application is now called **PDC** (Prestatiedatabank voor Conferentietolken).
+> It was called "Interpreter Mission Management System", "tolkenplanning" or `matcher`; the
+> person who plans the interpreters is still the **planner** (tolkenplanner). This version adds
+> what was decided for PDC in the sessions on spic: the meetings come from **spic** (new
+> sections 1.1 to 1.6), the meeting model (2.7), cancellations that never remove an assignment
+> (5.4, 6.2, 6.3), and the editing lock and the roles (9). The decisions are recorded in
+> `docs/stand-van-zaken.md` of the repository `bvelsac/crystalclear`; the spic side of the
+> contract is in FA Opnamebeheer §13.2 of that repository (`docs/FA_opnamebeheer_v1.2.md`, where
+> spic is still called Banaan). This document describes PDC; the contract with spic is
+> described there.
+>
 > **1.1:** a booking is now a bucket of positions, one per interpreter, so that the
 > interpreters of one bureau booking can each be dispatched to meetings independently
 > (new section 2.5, scenario 6.4). Actual hours and the name of the person sent are kept
 > per position.
 
+**Terms used in this document**
+
+| Term | Meaning |
+|------|---------|
+| PDC | This application: the planner's tool for interpreters |
+| spic | The planning of the meetings of the Verslaggeving directorate (repository `bvelsac/crystalclear`). The only source of the Parliament's meetings |
+| planner | The person who plans the interpreters (tolkenplanner) |
+| spic meeting | A meeting that comes from spic; PDC keeps a copy |
+| own meeting | A meeting that is not in spic and is entered in PDC |
+| week status | Status of a week in spic: concept, pre-definitive (pre-definitief) or definitive (definitief) |
+
 ---
 
 ## 1. Domain Overview
 
-The system manages the reservation and allocation of interpreters across time periods, matching their declared availability with meetings that require interpretation services. The fundamental principle is that **availabilities are declared for time slots**, **bookings reserve interpreter capacity**, and **meetings consume booked capacity** - but these concepts remain distinct to handle the reality that meetings may be cancelled, rescheduled, or added after availabilities are collected.
+PDC manages the reservation and allocation of interpreters across time periods, matching their declared availability with meetings that require interpretation services. The fundamental principle is that **availabilities are declared for time slots**, **bookings reserve interpreter capacity**, and **meetings consume booked capacity** - but these concepts remain distinct to handle the reality that meetings may be cancelled, rescheduled, or added after availabilities are collected.
 
 A booking is the commitment towards the supplier (an individual interpreter or a bureau). Inside a booking, every interpreter is a separate **booking position**, and it is positions - not whole bookings - that are dispatched to meetings. A bureau booked for three interpreters is a bucket of three positions; each of the three can go to a different meeting.
+
+PDC is the planner's tool, used for about 95 % of their working time: finding interpreters, assigning them to meetings, moving them. The main screen is therefore a **workbench**, not a form. **All** meetings need interpreters, also those for which no report or transcript is made. Assignments are documented carefully (1.6).
+
+Later a similar application will follow for another category of freelancers, also depending on the data of spic. It follows the same pattern as PDC; it is not an extension of spic.
+
+### 1.1 Where meetings come from
+
+- **spic is the only source of the Parliament's meetings.** Meetings are no longer entered by hand or imported from a CSV file. PDC keeps its **own copy** of every spic meeting it has received (1.3) and never writes in spic's database.
+- **Only weeks that are pre-definitive or definitive** are passed on. A week in concept stays in spic and is invisible to PDC. Pre-definitive: the week is filled in; responsible officials and coordinators may still be missing. Definitive: officials and a coordinator per day are filled in, and changes are marked. The status of a week can change in any order, also back to concept.
+- **Own meetings:** some meetings have no report and are therefore not in spic, but they do need interpreters. The secretary enters them in PDC (1.5).
+- Spic meetings and own meetings appear **in one list**, labelled "from spic" or "own".
+- The staffing status of PDC is not passed back to spic.
+
+### 1.2 Two applications, two databases
+
+- PDC and spic are **separate applications, each with its own database.** Reasons: own back-up and restore (restoring spic must not roll back assignments), own retention period and access rules for the personal data of freelancers, PDC keeps working while spic is briefly unavailable, and the later application for other freelancers follows the same pattern instead of making spic bigger.
+- In production PDC runs **on the same server and in the same environment as spic** (Docker on the infracriv platform). Proposals that follow from this, not yet decided:
+  - PDC is its own compose project on the shared Docker network `infracriv`, with its own volumes, version and tag, so that deploying PDC does not restart spic and vice versa.
+  - PDC calls spic **inside that network** (`http://spic:8000/...`), not through Caddy and Authelia, with **its own token** (from `.env`, never in a repository). spic trusts the Authelia headers only when they come through Caddy, so only trusted containers may join that network.
+  - People reach PDC like spic: a route in the Caddyfile and a rule in Authelia, in `CAL` (repository `infracriv`). That is changed only when the user explicitly asks for it.
+  - PDC needs a **nightly back-up** of its own: assignments cannot be recovered from spic.
+- Which database engine PDC uses (SQLite like spic, or MySQL as in the Phase 1 prototype) is an open point (9, point 11).
+
+### 1.3 Keeping the copy up to date
+
+- **One running change number.** Every change in spic, including a change of week status, gets the next number in one sequence for the whole spic database. PDC only remembers the last number it processed and asks for "everything since change N".
+- **Follow the number, not the version.** A meeting's version in spic does not increase for derived changes (recalculations), and the planning version exists only for definitive weeks. The change numbers always increase.
+- **Week status changes are items too.** When a week becomes pre-definitive, PDC fetches the **whole week** (earlier changes during the concept period were invisible). When a week goes back to concept, its meetings disappear from PDC's visible list (BR-MTG-009).
+- **Recognition by ID.** A spic meeting has a stable ID (`m-xxxxxxxx`). PDC recognises meetings by that ID, never by date and time. A meeting can move to another week (same ID, other week).
+- **Deletion and restore.** Deleting a meeting in spic really removes the row there, and the deletion is reported explicitly. PDC keeps its copy with status DELETED (2.7). Restoring in spic brings back the **same ID**, so a deletion followed by the same ID is normal: the copy becomes active again.
+- **When the copy is updated** (decided): when someone uses PDC (opening a screen first updates the copy) **and** by a background task on the server, also when no screen is open. Working without a background task is not an option. Proposal for the details: one request "since N" every 5 minutes; a lock so that two updates at the same time do not process anything twice; at the bottom of the screen "copy updated to change N at hh:mm", with a warning when that is too old; spic being unreachable is not an error, the task simply tries again; every night a **full comparison** with the complete list from spic that repairs any differences.
+- **spic restored from a back-up:** if spic's highest change number is lower than PDC's last number, PDC performs a full synchronisation.
+- **No polling and no live notifications** in the screen: an open view is refreshed when it is reloaded. "Changed since your last visit" is calculated when the screen is opened.
+- Times from spic are Brussels time.
+
+### 1.4 Changing a spic meeting from PDC
+
+- The planner changes the basic data of a spic meeting only now and then, and only **start time, room and cancellation**: a small action, written immediately, **without any lock**. A spic meeting **cannot be deleted** in PDC, only cancelled; deleting is done in spic.
+- The change goes through a very limited **write route in spic** (not built yet): start time, room or cancellation, with the name of the person. The route **never refuses a change because of a version difference**: it sets the value, also when the meeting was changed in the meantime, and only tells PDC that the value had changed ("the start time had meanwhile been set to 15:00 by Kathy"). It refuses only when the meeting no longer exists or the value is invalid.
+- A planner who saves from an outdated form gets a **conflict window** in PDC (then, now, your input).
+- In spic such a change appears in the history under the planner's name with "via PDC", marked like any other change. Someone who has the same meeting open in spic sees the change within 30 seconds in a yellow bar ("Start time: 14:00 → 14:30, by Anna").
+- Proposal: after a successful write, PDC immediately updates its copy ("since N"), so that the change is visible with its change number.
+
+### 1.5 Own meetings
+
+- Entered by the secretary in PDC, in PDC's own database, next to the copies of the spic meetings.
+- Fields: title, date, start, end or duration, room (from spic's fixed list of rooms), category, number of interpreters, notes. No sequence number, officials, agenda items or turn rota.
+- **No recurrence and no series:** each own meeting is entered on its own (a weekly series does not match reality).
+- An own meeting is fully editable in PDC. It can be **deleted only as long as no interpreter was ever assigned** to it; after that it can only be cancelled.
+- Open: linking an own meeting to a spic meeting if the same meeting later turns up in spic.
+
+### 1.6 The assignment log
+
+- PDC keeps its **own, append-only log** of assignments, with a lot of logging: every creation, confirmation, change and cancellation of an assignment is a new entry, with who, when, and a **snapshot of the meeting** at that moment. Entries are never changed or deleted.
+- **A cancellation never removes an assignment.** When a meeting is cancelled (in spic or via PDC) or deleted in spic, its assignments stay as they are until the planner decides (5.4).
+- Two work lists for the planner follow from this (they replace the formula columns TE BEHANDELEN and TE CONTROLEREN of the former Google Sheet):
+  - **Cancelled with an assigned interpreter:** cancelled or deleted meetings that still have assignments that are not cancelled.
+  - **Changed since the confirmation:** meetings whose date, start, end, room or status differ from the snapshot taken when an assignment was confirmed.
 
 ---
 
@@ -231,6 +311,8 @@ The position is the unit of dispatching. Example:
 - **BR-ASGN-004**: An assignment can be cancelled without cancelling the position or booking (e.g., meeting cancelled, interpreter stays booked)
 - **BR-ASGN-005**: Assignment status cannot be CONFIRMED if booking status is not CONFIRMED
 - **BR-ASGN-006**: A position can be assigned to a given meeting only once; each assignment puts exactly one interpreter on one meeting
+- **BR-ASGN-007**: Every creation, status change and cancellation of an assignment adds an entry to the assignment log (1.6), with the user, the time and a snapshot of the meeting. Assignments and log entries are never deleted
+- **BR-ASGN-008**: A meeting that is cancelled or deleted in spic does not cancel its assignments automatically; the planner decides (5.4)
 
 **Derived Properties**:
 - `booking_id`, `interpreter_id`: Retrieved through the position
@@ -248,33 +330,57 @@ Because one assignment = one interpreter, staffing a meeting is a matter of coun
 
 ### 2.7 Meeting
 
-**Definition**: A scheduled event requiring interpretation services, which consumes booked interpreter capacity.
+**Definition**: A scheduled event requiring interpretation services, which consumes booked interpreter capacity. A meeting has one of two origins:
+
+- **From spic** (SPIC): a copy of a spic meeting (1.1, 1.3). Read-only in PDC, except start time, room and cancellation, which go through spic's write route (1.4).
+- **Own** (OWN): entered in PDC (1.5). Fully editable in PDC; no series.
 
 **Properties**:
 
 | Property | Type | Constraint | Description |
 |----------|------|------------|-------------|
-| `meeting_id` | Integer | Primary key, unique | System identifier |
-| `name` | String | Required | Meeting title/description |
-| `date` | Date | Required | Calendar date of meeting |
-| `start_time` | Time | Required | Meeting start time |
-| `end_time` | Time | Required | Meeting end time |
-| `interpreters_needed` | Integer | Required, > 0 | Number of interpreters required |
-| `location` | String | Required | Physical or virtual location |
-| `category` | Enum | Required | PARLIAMENT, AFFILIATED_ORGANIZATION, EXTERNAL_GROUP, SPECIAL_EVENT |
-| `estimated_duration` | Integer | Derived | Duration in hours |
-| `created_at` | DateTime | System-generated | Timestamp of creation |
-| `updated_at` | DateTime | System-maintained | Timestamp of last modification |
-| `created_by` | Integer | Foreign key to User | Who created this meeting |
+| `meeting_id` | Integer | Primary key, unique | PDC's own identifier; assignments refer to it |
+| `origin` | Enum | Required | SPIC or OWN; shown as the label "from spic" / "own" |
+| `spic_id` | String | Unique; required for SPIC, empty for OWN | spic's stable ID (`m-xxxxxxxx`) |
+| `status` | Enum | Required | PLANNED, CANCELLED, DELETED (spic: `gepland`, `geannuleerd`, and deleted). DELETED only for spic meetings that were deleted in spic |
+| `week` | Date | SPIC only | Monday of the spic week the meeting belongs to |
+| `week_status` | Enum | SPIC only | PRE_DEFINITIVE, DEFINITIVE, or CONCEPT when the week went back to concept (BR-MTG-009) |
+| `title` | String | Required for OWN | Title of an own meeting. For a spic meeting the title is derived from spic's domain, assembly, type and sequence numbers |
+| `date` | Date | Required | Calendar date (Brussels time) |
+| `period` | Enum | Required | AM or PM. Always present in spic, also when no start time is known |
+| `start_kind` | Enum | SPIC only | TIME (a start time) or AFTER (after another meeting, without a time) |
+| `start_time` | Time | Optional | Start time as entered. Empty for "after another meeting" |
+| `effective_start` | Time | Optional | Start time used for planning. **Can be empty** in spic ("after another meeting" is not calculated) |
+| `expected_end` | Time | Optional | End time. **Can be empty** in spic; in spic it is entered or estimated from the agenda or the meeting type |
+| `room` | Code | Required for OWN | Room from spic's fixed list of rooms, for spic and own meetings alike |
+| `domain`, `assembly`, `type` | Code | SPIC only | spic's classification of the meeting |
+| `sequence_number`, `sequence_number_2` | Integer | SPIC only | spic's sequence numbers |
+| `interpreters_needed` | Integer | > 0 | Number of interpreters required. **Kept in PDC**, also for spic meetings (spic does not know it). Required for own meetings. Proposal: empty for a new spic meeting until the planner fills it in (work list "new from spic") |
+| `category` | Enum | Required | Category used in PDC. For spic meetings it must be derived from domain, assembly and type (still to be designed, 9 point 12) |
+| `notes` | Text | Optional | PDC's own notes |
+| `spic_data` | Document | SPIC only | The complete last state received from spic, including the fields PDC does not use (officials, comment, questions per agenda item, priority, transcription...) |
+| `last_change_number` | Integer | SPIC only | spic's change number of the last change applied to this copy |
+| `created_at`, `updated_at` | DateTime | System-maintained | When the copy or the own meeting was created and last changed |
+| `created_by` | User | OWN only | Who entered the own meeting |
 
 **Business Rules**:
-- **BR-MTG-001**: start_time must be < end_time
-- **BR-MTG-002**: estimated_duration = end_time - start_time (in hours)
+- **BR-MTG-001**: For an own meeting, the end (or start + duration) must be after the start. For a spic meeting the times are taken as they are and may be missing
+- **BR-MTG-002**: The duration of a meeting is expected_end - effective_start when both are known; otherwise it is unknown and shown as such
 - **BR-MTG-003**: A meeting is staffed through Meeting Assignments (2.6), each putting one interpreter (one booking position) on the meeting
+- **BR-MTG-004**: A spic meeting is read-only in PDC, except start time, room and cancellation, which are changed through spic's write route (1.4), without a lock. All other changes are made in spic and reach PDC through the copy
+- **BR-MTG-005**: A spic meeting cannot be deleted in PDC. A deletion in spic sets the copy's status to DELETED; the copy and its assignments are kept. A restore in spic (same ID) makes the copy active again
+- **BR-MTG-006**: An own meeting can be deleted only as long as no interpreter was ever assigned to it (no assignment, whatever its status, and no entry in the assignment log); otherwise it can only be cancelled
+- **BR-MTG-007**: No recurrence and no series: each own meeting is entered on its own
+- **BR-MTG-008**: Spic meetings are recognised by `spic_id`, never by date and time. A meeting that moves to another week in spic stays the same meeting in PDC, with its assignments
+- **BR-MTG-009**: Only meetings of pre-definitive and definitive weeks are visible. When a week goes back to concept, its meetings disappear from the visible list; their copies and assignments are kept, and a meeting that has assignments is flagged to the planner
+- **BR-MTG-010**: Cancelling or deleting a meeting never cancels or removes its assignments automatically; the meeting appears on the work list "cancelled with an assigned interpreter" (1.6, 5.4)
+
+**Missing times** (proposal, to be confirmed): the checks that compare times (BR-POS-002, BR-ASGN-001, BR-ASGN-002, BR-VAL-004) use effective_start and expected_end when they are known. When one of them is missing, PDC uses the period (AM or PM) for matching the meeting to a time slot, does not refuse an assignment, and flags it as "time unknown" until spic provides the time.
 
 **Derived Properties**:
-- `datetime_start`: date + start_time combined
-- `datetime_end`: date + end_time combined
+- `datetime_start`: date + effective_start combined, when known
+- `datetime_end`: date + expected_end combined, when known
+- `time_known`: TRUE when both effective_start and expected_end are known
 - `staffing_count`: Number of CONFIRMED meeting assignments for this meeting
 - `staffing_status`: 
   - UNSTAFFED if staffing_count = 0
@@ -296,15 +402,17 @@ Because one assignment = one interpreter, staffing a meeting is a matter of coun
 Meetings are downstream consumers of booked capacity. The sequence is:
 1. Declare availability for time slots
 2. Create bookings from availability (reserves capacity for time blocks, one position per interpreter)
-3. Create/identify meetings
+3. Meetings arrive from spic (or are entered as own meetings)
 4. Assign positions to meetings
-5. If a meeting cancels, cancel its assignments but keep the bookings and positions for reassignment
+5. If a meeting cancels, the planner cancels its assignments (never automatically, 5.4) but keeps the bookings and positions for reassignment
 
 ---
 
 ### 2.8 CSV Data Source
 
 **Definition**: A configured external source providing availability declarations via HTTP-accessible CSV file.
+
+**Scope (1.2)**: CSV sources are only for **availabilities**, which keep coming from Google Forms for now. Meetings never come from a CSV file or are entered by hand any more: they come from spic, or are own meetings (1.1). A later idea, not decided, is PDC's own response form for the interpreters, which would replace the CSV import (9, point 14).
 
 **Properties**:
 
@@ -459,7 +567,7 @@ Positions have their own, simpler status: ACTIVE, or CANCELLED when the bureau c
 - Different positions of one booking MAY be at overlapping meetings
 - All meetings assigned to a position MUST fall within the booking's time slot
 - If a booking or position is CANCELLED, its assignments are CANCELLED
-- If a meeting is CANCELLED, only that meeting's assignments are cancelled
+- If a meeting is CANCELLED, only that meeting's assignments are cancelled, by the planner and never automatically (BR-MTG-010)
 
 **Reassignment Scenario**:
 ```
@@ -615,7 +723,7 @@ RETURN positions_created, remaining_need
 **BR-STAFF-004: Assignment Flexibility**
 - One position can serve multiple non-overlapping meetings
 - The positions of one bureau booking can be dispatched to different meetings
-- If Meeting A cancels: Cancel its assignments, keep the positions, which become available for other meetings
+- If Meeting A cancels: the planner cancels its assignments (never automatically, 5.4) and keeps the positions, which become available for other meetings
 - If a whole booking is no longer needed: Cancel booking (all positions and assignments also cancelled)
 
 ---
@@ -625,6 +733,8 @@ RETURN positions_created, remaining_need
 ### 5.1 Availability Collection Process
 
 **Objective**: Import interpreter availability declarations for time slots from external CSV sources.
+
+**Scope (1.2)**: availabilities only; for now they keep coming from Google Forms. Meetings come from spic (1.3) or are own meetings (1.5).
 
 **Input**: CSV source URL(s)
 
@@ -790,23 +900,30 @@ RETURN positions_created, remaining_need
 
 ### 5.4 Meeting Cancellation Process
 
-**Objective**: Handle cancellation of a meeting while preserving bookings for potential reassignment.
+**Objective**: Handle cancellation of a meeting while preserving bookings for potential reassignment. A cancellation never removes or cancels an assignment by itself (BR-MTG-010); the planner decides what happens to each one.
 
-**Input**: meeting_id
+**Input**: a cancellation, which reaches PDC in one of three ways:
+- it is made in spic and arrives with the update of the copy (1.3);
+- the planner cancels a spic meeting in PDC, through spic's write route (1.4);
+- the planner cancels an own meeting in PDC (1.5).
+
+A meeting deleted in spic (status DELETED) follows the same process.
 
 **Steps**:
 
-1. **Find Meeting Assignments**
+1. **Record the Cancellation**
+   - The meeting's status becomes CANCELLED (or DELETED); for a spic meeting the copy records spic's change number
+   - Its assignments stay exactly as they were: nothing is removed, nothing is cancelled automatically
+   - The meeting appears on the work list **cancelled with an assigned interpreter** as long as it has assignments that are not CANCELLED
+
+2. **The Planner Handles Each Assignment**
    ```sql
    SELECT * FROM meeting_assignments
    WHERE meeting_id = :meeting_id
      AND assignment_status IN ('PROPOSED', 'CONFIRMED')
    ```
-
-2. **Cancel Assignments**
-   - UPDATE meeting_assignments SET assignment_status = CANCELLED WHERE meeting_id = :meeting_id
-   - ADD note: "Meeting [name] cancelled on [date]"
-   - Positions and bookings remain intact
+   - Cancel the assignment (assignment_status = CANCELLED, note "Meeting [name] cancelled on [date]"); positions and bookings remain intact
+   - Each cancellation is a new entry in the assignment log, with a snapshot of the meeting (1.6)
 
 3. **Evaluate Positions and Bookings**
    - For each position that had an assignment to this meeting:
@@ -816,15 +933,16 @@ RETURN positions_created, remaining_need
      - Option A: Keep booking CONFIRMED (reserved capacity, available for reassignment)
      - Option B: Cancel booking (status = CANCELLED, interpreters get forfait)
 
-4. **Mark Meeting as Cancelled**
-   - UPDATE meetings SET status = CANCELLED (or delete)
-   - Retain in audit log
+4. **Reopening**
+   - spic can reopen a cancelled meeting, and a deleted meeting can be restored with the same ID. Assignments that the planner has not cancelled are then valid again, and the meeting leaves the work list
+   - Assignments that were cancelled stay cancelled; the planner makes new ones if needed
 
 5. **Notify Interpreters**
+   - The planner informs the interpreters; PDC sends no email itself
    - Positions with other meetings: "Meeting X cancelled, you still have Meeting Y in the same time block"
    - Positions without other meetings: "Meeting X cancelled, you remain booked; we will reassign you or pay the forfait"
 
-**Output**: Cancelled assignments, preserved bookings and positions (available for new assignments)
+**Output**: Cancelled meeting, assignments handled one by one by the planner and logged, preserved bookings and positions (available for new assignments)
 
 ---
 
@@ -847,9 +965,9 @@ RETURN positions_created, remaining_need
    - Import CSV → populate availability_declarations
 
 3. **August: Meetings Confirmed**
-   - Parliamentary calendar finalized
-   - Create specific meetings (names, locations, categories)
-   - Match meetings to slots by datetime
+   - Parliamentary calendar finalized in spic
+   - The meetings reach PDC as their weeks become pre-definitive or definitive (1.3); the planner only adds own meetings and sets interpreters_needed
+   - Match meetings to slots by datetime (by period when the time is still unknown, 2.7)
 
 4. **Create Bookings**
    - For each meeting: run booking creation process
@@ -867,6 +985,11 @@ RETURN positions_created, remaining_need
 **Context**: Thursday afternoon, urgent meeting tomorrow Friday 10:00-13:00
 
 **Steps**:
+
+0. **The Meeting Reaches PDC**
+   - A Parliament meeting is created in spic and reaches PDC with the next update of the copy: when a PDC screen is opened, or within 5 minutes through the background task (1.3). It is visible only when its week is pre-definitive or definitive
+   - A meeting without a report is not in spic: the secretary enters it in PDC as an own meeting (1.5)
+   - The planner sets interpreters_needed
 
 1. **Check Existing Slots**
    - SELECT slot WHERE date = '2025-11-01' AND start_time = '10:00'
@@ -911,12 +1034,13 @@ RETURN positions_created, remaining_need
      - Position 1 → Meeting B (11:00-12:30) → Assignment 2
 
 2. **Friday: Meeting A Cancelled**
-   - Cancel Assignment 1: UPDATE meeting_assignments SET assignment_status = CANCELLED WHERE assignment_id = 1
-   - Meeting A marked CANCELLED
+   - Meeting A is cancelled in spic (or by the planner in PDC, through spic's write route); with the next update of the copy it is marked CANCELLED
+   - Assignment 1 is not touched automatically: Meeting A appears on the work list "cancelled with an assigned interpreter" (5.4)
+   - The planner cancels Assignment 1: UPDATE meeting_assignments SET assignment_status = CANCELLED WHERE assignment_id = 1; the assignment log records it with a snapshot of Meeting A
    - Booking remains CONFIRMED (still has Meeting B)
    - Interpreter A still working Monday 9-13h (for Meeting B)
 
-3. **Monday: New Urgent Meeting C Scheduled (10:00-11:00)**
+3. **Monday: New Urgent Meeting C Scheduled (10:00-11:00)** (arrives from spic, or entered as an own meeting)
    - Check position 1: booked 9-13h
    - Check conflicts: Meeting B (11:00-12:30)
    - Time window 10:00-11:00 is FREE (no overlap with Meeting B)
@@ -966,8 +1090,8 @@ RETURN positions_created, remaining_need
    - Position 2's assignments to A and C are unchanged
 
 5. **Cancellation**
-   - Meeting B is cancelled
-   - Position 3's assignment to B is cancelled; position 3 keeps C and is free 9:00-11:00
+   - Meeting B is cancelled in spic and appears on the planner's work list (5.4)
+   - The planner cancels position 3's assignment to B; position 3 keeps C and is free 9:00-11:00
    - Urgent Meeting D (10:00-10:45) → position 3
 
 6. **Actual Hours**
@@ -996,7 +1120,7 @@ RETURN positions_created, remaining_need
 
 ### 7.3 Legal Compliance
 - Priority order enforced in booking creation
-- Complete audit trail: availability → booking → position → meeting assignment
+- Complete audit trail: availability → booking → position → meeting assignment, with the append-only assignment log and a snapshot of the meeting for every change (1.6)
 - Documentation for all priority overrides
 
 ### 7.4 Efficiency Gains
@@ -1039,11 +1163,19 @@ Not yet covered by this analysis:
 
 1. **Confirmations**: the text per interpreter for a chosen period (default: a week starting Monday). Only mentioned in passing in scenario 6.1.
 2. **Weekly overview for HR and monthly overview of prestations per interpreter**: referred to, not defined.
-3. **Users, roles and the editing lock**: editor and viewer roles, and locking the system while one person dispatches. Implemented in Phase 1, not described here.
+3. **Users, roles and the editing lock**:
+   - *Editing lock.* Phase 1 locks the whole system for 4 hours while one editor dispatches. That **conflicts with the decisions**: start time, room and cancellation must be possible at once, without a lock, also by another user (1.4); spic has no hard lock either, only merging per field when saving. To be decided whether the lock stays, becomes smaller or goes. Proposal: drop it (`docs/pdc-voorstel.md`).
+   - *Roles.* Decided: everyone who enters data in spic or administers it (invoerders and beheerders) may manage PDC; there is no separate PDC role. Phase 1 has its own accounts (editor and viewer) with a password, after the Authelia login. Open: keep own accounts, or take over the Authelia identity and spic's roles. For "via PDC" in spic's history, the name of the person must go with every write (1.4). Proposal in `docs/pdc-voorstel.md`.
 4. **Interpreter portal**: interpreters enter their own start and end times; the team lead validates them. Positions hold the times, but the entry and validation step is missing.
 5. **Real duration of the meeting itself**: keep the initial estimate and record the real length of the meeting. Only the individual interpreters' hours are covered.
 6. **Interpreter becomes unavailable**: suggest the next interpreter in the priority list and record the communicated change. Only covered implicitly.
 7. **Booking someone who did not respond to the form** (from the overall list): allowed, but not stated as a rule.
 8. **BR-SRC-003** says "no overlap constraint", which contradicts the rule that the same meeting in two forms is a logical error and must be flagged.
-9. **Meeting fields**: this analysis uses a start and end time; the original brief and the Phase 1 code use a start time plus an estimated duration. To be decided which one applies.
+9. **Meeting fields** (answered in 1.2): spic gives a start time (or "after another meeting", without a time), an optional entered end, and an estimated duration from the agenda or the meeting type; effective start and end can be empty; the period (AM/PM) is always present. Own meetings have a start plus an end or a duration (2.7). Still to confirm: how checks work when a time is missing (proposal in 2.7).
 10. **Section 7.4**: the figures "8-10 hours per cycle" and "10-15% errors" are assumptions, not measured values. To be removed or replaced with real figures.
+11. **Database**: Phase 1 uses MySQL; spic uses SQLite. Proposal: SQLite (`docs/pdc-voorstel.md`), together with the model of the copy of the spic meetings and the assignment log.
+12. **Category of a spic meeting**: PDC's categories must be derived from spic's domain, assembly and type. Not designed yet; Phase 1's four categories (Parliament, affiliated organization, external group, special event) remain for own meetings until then.
+13. **Events and coordinators**: spic also has events (blocks with an ID starting with `e-`, without a report) and a coordinator per day. Whether PDC needs them has not been discussed.
+14. **Own response form for the interpreters** (idea, nothing decided): like Google Forms now, but PDC's own. One link per round with a long, unguessable code, which the planner sends out by email; the interpreter identifies with their email address or ID; only known interpreters are accepted; a new answer from the same interpreter replaces the previous one until the closing date. **No email from the system** (no mail server or service): the planner can copy "all addresses" and "addresses of those who did not answer yet" into their own mail program. Answers go straight into the database, so the CSV import (2.8, 5.1) would disappear. Still to settle: a public route in `CAL` (only `/antwoord/...`, the rest stays behind Authelia; `CAL` is changed only when the user explicitly asks), protection against abuse, and whether interpreters outside the building can reach the server from the internet.
+15. **An own meeting that turns up in spic**: linking it to the spic meeting later. Open.
+16. **spic's list of rooms**: PDC needs spic's fixed list of rooms (for own meetings and to show room names). The export described in FA Opnamebeheer §13.2 does not mention code lists yet; to be agreed with the spic session.
