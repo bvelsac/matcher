@@ -16,7 +16,8 @@
 > spic is still called Banaan). This document describes PDC; the contract with spic is
 > described there. Decisions of the user on 10 October 2026, after the proposals in
 > `docs/pdc-voorstel.md`: SQLite as database, no editing lock, login through Authelia with the
-> rights taken from spic, code in English (9, points 3 and 11).
+> rights taken from spic, code in English (9, points 3 and 11). Also added: whether the invoice
+> for a service has come in, and its reference (2.5, BR-POS-008).
 >
 > **1.1:** a booking is now a bucket of positions, one per interpreter, so that the
 > interpreters of one bureau booking can each be dispatched to meetings independently
@@ -266,6 +267,8 @@ A booking is the commitment to a supplier for a TIME BLOCK: "Bureau X, 3 interpr
 | `actual_start_time` | DateTime | Optional | When this interpreter actually started |
 | `actual_end_time` | DateTime | Optional | When this interpreter actually finished |
 | `notes` | Text | Optional | E.g. "replacement for X, who fell ill" |
+| `invoice_received_on` | Date | Optional | When the supplier's invoice for this service came in. Empty: not received yet |
+| `invoice_reference` | String | Optional | The supplier's reference (number) of that invoice |
 
 **Business Rules**:
 - **BR-POS-001**: A position belongs to exactly one booking; position_number is unique within that booking
@@ -275,12 +278,14 @@ A booking is the commitment to a supplier for a TIME BLOCK: "Bureau X, 3 interpr
 - **BR-POS-005**: Cancelling a position (the bureau cannot send that interpreter after all) cancels its meeting assignments; the affected meetings become understaffed and are flagged
 - **BR-POS-006**: interpreter_name must be filled in before the booking is COMPLETED (needed for the overview to HR)
 - **BR-POS-007**: Actual hours are recorded per position, because interpreters at the same meeting can work different hours (one stays longer than another)
+- **BR-POS-008**: Whether the invoice for the service has come in, and its reference, are recorded per position (the planner's spreadsheet keeps both today). One invoice often covers several positions (a bureau invoicing all its interpreters of a booking or a month), so the same reference can appear on several positions; PDC lets the planner record one invoice on several positions at once. Changing or clearing these fields is logged like any other change
 
 **Derived Properties**:
 - `interpreter_id`: From the booking (the individual or the bureau, whose priority applies)
 - `assigned_meetings`: Meetings linked to this position by non-cancelled assignments
 - `free_periods`: Parts of the booking's time block not covered by an assigned meeting
 - `actual_duration_hours`: (actual_end_time - actual_start_time) in hours
+- `invoice_received`: TRUE when invoice_received_on is filled in. COMPLETED positions without an invoice form the work list **invoice not received yet**
 
 **Key Insight**:
 The position is the unit of dispatching. Example:
@@ -1102,7 +1107,12 @@ A meeting deleted in spic (status DELETED) follows the same process.
    - Sophie and Thomas stay until 13:30; Lisa leaves at 12:30
    - Recorded per position: Sophie 9:00-13:30, Thomas 9:00-13:30, Lisa 10:00-12:30
 
-**Key**: One commitment to the bureau, three people dispatched independently, with names, replacements and hours kept per person for the overview to HR.
+7. **Invoice**
+   - Two weeks later the bureau's invoice for the morning comes in, with reference 2026-0412
+   - The planner records it once for positions 1, 2 and 3: received on that date, reference 2026-0412
+   - The three positions leave the work list "invoice not received yet"
+
+**Key**: One commitment to the bureau, three people dispatched independently, with names, replacements, hours and the invoice kept per person for the overview to HR.
 
 ---
 
@@ -1182,3 +1192,4 @@ Not yet covered by this analysis:
 14. **Own response form for the interpreters** (idea, nothing decided): like Google Forms now, but PDC's own. One link per round with a long, unguessable code, which the planner sends out by email; the interpreter identifies with their email address or ID; only known interpreters are accepted; a new answer from the same interpreter replaces the previous one until the closing date. **No email from the system** (no mail server or service): the planner can copy "all addresses" and "addresses of those who did not answer yet" into their own mail program. Answers go straight into the database, so the CSV import (2.8, 5.1) would disappear. Still to settle: a public route in `CAL` (only `/antwoord/...`, the rest stays behind Authelia; `CAL` is changed only when the user explicitly asks), protection against abuse, and whether interpreters outside the building can reach the server from the internet.
 15. **An own meeting that turns up in spic**: linking it to the spic meeting later. Open.
 16. **spic's list of rooms**: PDC needs spic's fixed list of rooms (for own meetings and to show room names). The export described in FA Opnamebeheer §13.2 does not mention code lists yet; to be agreed with the spic session.
+17. **The planner's spreadsheet**: the interpreter data are kept today in a spreadsheet, which also records whether the invoice for a service has come in and its reference (now in 2.5). Its other columns are still to be compared with this model; it holds real personal data and never goes into the repository.

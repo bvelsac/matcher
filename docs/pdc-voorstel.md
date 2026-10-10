@@ -117,6 +117,18 @@ bijwerking haar beurt over.
 `rooms`: kopie van de vaste lijst zalen van spic (`code`, `description`, `active`). `user_visits`: per gebruiker het
 tijdstip van het laatste bezoek, voor "gewijzigd sinds je laatste bezoek".
 
+### Facturen (nieuw gegeven, 10 oktober 2026)
+
+De spreadsheet van de tolkenplanner houdt ook bij of de factuur voor een prestatie al binnen is, en met welke referentie.
+In de FA staan daarom twee velden op de boekingspositie (§2.5, BR-POS-008): `invoice_received_on` (datum, leeg = nog
+niet binnen) en `invoice_reference`. Eén factuur dekt vaak meer posities (een bureau factureert een boeking of een
+maand), dus de planner kan één factuur in één keer op meer posities noteren; een werklijst "factuur nog niet binnen"
+toont de afgewerkte posities zonder factuur. Elke wijziging komt in het logboek (actie `invoice_recorded`).
+
+De spreadsheet zelf is in deze sessie niet aangekomen. Als ze er is: de kolommen vergelijken met het model (wat
+ontbreekt er nog, op welk niveau staat een rij: per tolk per vergadering, per dag of per boeking). Ze bevat echte
+persoonsgegevens en komt dus nooit in de repository; alleen de kolomnamen en de structuur worden beschreven.
+
 ### Keuzes in dit ontwerp
 
 - Een week die terug naar concept gaat: de vergaderingen worden **verborgen, niet gewist** (ze kunnen toewijzingen
