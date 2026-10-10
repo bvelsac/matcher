@@ -160,7 +160,8 @@ open point 14).
 - Time validation and approval
   - Team lead approval interface
   - Actual vs estimated duration tracking
-- Optional: forfait (3h/4h) and normal/late overtime calculation
+- Forfait (3h or 4h, for everyone) plus overtime counted per half hour (functional analysis
+  2.4, BR-BKG-009); whether late hours have another rate is still open
 
 **Deliverable**: Complete system with time tracking
 

@@ -224,7 +224,7 @@ An availability says "I CAN work" but not "I WILL work". Transformation from ava
 | `quantity_booked` | Integer | Derived | Number of ACTIVE positions in this booking |
 | `status` | Enum | Required | PROPOSED, CONFIRMED, COMPLETED, CANCELLED |
 | `booking_reason` | String | Optional | Why booked if no meetings assigned yet |
-| `forfait_hours` | Integer | Optional | The forfait the booking is paid on, e.g. 3 or 4 hours (the spreadsheet notes "forfait 3u" per block). Hours beyond it are overtime, per position |
+| `forfait_hours` | Integer | Required, 3 or 4 | The forfait the booking is paid on: everyone works on forfaits of 3 or 4 hours (the user, 10 October 2026; "forfait 3u" in the spreadsheet). Overtime is added per half hour, per position (BR-BKG-009) |
 | `notes` | Text | Optional | Administrative notes, override reasons |
 | `created_at` | DateTime | System-generated | When booking created |
 | `updated_at` | DateTime | System-maintained | Last modification |
@@ -239,6 +239,7 @@ An availability says "I CAN work" but not "I WILL work". Transformation from ava
 - **BR-BKG-006**: Creating a booking for N interpreters creates N positions, numbered 1..N
 - **BR-BKG-007**: An interpreter or bureau has at most one CONFIRMED booking per time slot, and no CONFIRMED bookings with overlapping time slots. More interpreters from the same bureau for the same slot are added as extra positions on the existing booking (within the declared availability)
 - **BR-BKG-008**: A booking is COMPLETED when the work is done; actual hours are recorded per position (2.5)
+- **BR-BKG-009**: Every interpreter is paid the booking's forfait of 3 or 4 hours. When the meeting runs over, the extra time is added per half hour, for each position on its own actual hours ("forfait 3u + overuren" in the spreadsheet). Whether a half hour that has only started counts in full is to be confirmed
 
 **Derived Properties**:
 - `quantity_booked`: Count of ACTIVE positions
@@ -290,6 +291,8 @@ A booking is the commitment to a supplier for a TIME BLOCK: "Bureau X, 3 interpr
 - `assigned_meetings`: Meetings linked to this position by non-cancelled assignments
 - `free_periods`: Parts of the booking's time block not covered by an assigned meeting
 - `actual_duration_hours`: (actual_end_time - actual_start_time) in hours
+- `overtime_half_hours`: the number of half hours worked beyond the booking's forfait (BR-BKG-009); 0 when the work stays within the forfait
+- `paid_hours`: forfait_hours + overtime_half_hours / 2
 - `invoice_received`: TRUE when the position is linked to an invoice. COMPLETED positions of interpreters on invoice without an invoice form the work list **invoice not received yet**; COMPLETED positions of interpreters in occasional work without a declaration form the work list **Dimona to declare**
 
 **Key Insight**:
@@ -1229,7 +1232,7 @@ Not yet covered by this analysis:
     - Meetings are spic's committee codes, plenary sessions and (extended) bureau, plus events that are not in spic (an animation in the hemicycle, a visit): confirms 1.1 and the own meetings.
     - Times are free text ("09.30 - 12.30", "11.00", "14.30 - finish", "?"): end times are often unknown, as in 2.7.
     - "FACT. of DIM" next to an interpreter holds the invoice number, "ok", "DIM" or "DIM / ok": invoice or occasional work with a Dimona declaration, a property of the interpreter (2.1, 2.5), and the invoice (2.9). Next to a meeting it sometimes holds one invoice number for the whole meeting.
-    - Next to the time: "forfait 3u", "forfait 3u + overuren", "bloc 1": the forfait of the booking (2.4) and overtime per position.
+    - Next to the time: "forfait 3u", "forfait 3u + overuren", "bloc 1": the forfait of the booking, 3 or 4 hours for everyone, with overtime added per half hour (2.4, BR-BKG-009).
     - "annulation transmise dd/mm" next to an interpreter: when the cancellation was passed on (2.6).
     - "nom à confirmer": the bureau has not given the name yet (2.5, interpreter_name). Names struck through: an interpreter replaced or cancelled; PDC keeps that in the position's notes and the log. Cell comments note reasons ("ill", "time changed on 30/9") and invoice discrepancies ("only one interpreter charged on the September invoice").
     - A memo sheet holds a request from another department for interpreters at an event it pays for itself.
