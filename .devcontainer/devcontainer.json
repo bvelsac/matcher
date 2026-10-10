@@ -8,8 +8,9 @@
     "DATABASE_URL": "sqlite:////workspaces/pdc_trial.db",
     "TZ": "Europe/Brussels"
   },
-  "postCreateCommand": "pip install -r requirements.txt && python manage.py init-db && python manage.py sample-data",
-  "postStartCommand": "nohup flask --app app run --host 0.0.0.0 --port 5000 > /tmp/pdc.log 2>&1 &",
+  "postCreateCommand": "python -m pip install -r requirements.txt",
+  // Runs in a terminal of its own and stays in the foreground, so Codespaces does not stop it.
+  "postAttachCommand": "sh .devcontainer/start.sh",
   "forwardPorts": [5000],
   "portsAttributes": {
     "5000": {"label": "PDC", "onAutoForward": "openBrowser"}
