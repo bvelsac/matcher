@@ -2,127 +2,189 @@
 <html lang="nl">
 <head>
 <meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Boodschapmaker</title>
 <meta name="claude:viewport-fit-sides" content="cover">
+<link rel="stylesheet" href="dwergster.css">
 <style>
-  :root {
-    --bg: #f5f6f8; --card: #fff; --text: #1d2330; --muted: #667085; --line: #d9dde5;
-    --accent: #2457c5; --accent-soft: #e8eefb; --ok: #1f7a3d; --ok-soft: #e6f4ea;
-    --err: #b42318; --err-soft: #fdecea; --warn: #9a6700; --warn-soft: #fff4d6;
-  }
-  @media (prefers-color-scheme: dark) {
-    :root:not([data-theme="light"]) {
-      --bg: #14171d; --card: #1d2129; --text: #e6e8ec; --muted: #9aa3b2; --line: #343a46;
-      --accent: #7aa2ff; --accent-soft: #232d44; --ok: #6fcf8e; --ok-soft: #1c3326;
-      --err: #ff8a80; --err-soft: #3a1f1f; --warn: #f0c45a; --warn-soft: #3a3020; color-scheme: dark;
-    }
-  }
-  :root[data-theme="dark"] {
-    --bg: #14171d; --card: #1d2129; --text: #e6e8ec; --muted: #9aa3b2; --line: #343a46;
-    --accent: #7aa2ff; --accent-soft: #232d44; --ok: #6fcf8e; --ok-soft: #1c3326;
-    --err: #ff8a80; --err-soft: #3a1f1f; --warn: #f0c45a; --warn-soft: #3a3020; color-scheme: dark;
-  }
+  /* Opbouw: een nevelband als kop, daaronder één kolom kaarten (één per punt van de boodschap),
+     dan het voorbeeld in het vak, de planning en de simulatie. Alle waarden komen uit Dwergster. */
+  :root { --kolom: 1200px; }
   * { box-sizing: border-box; }
-  body { margin: 0; background: var(--bg); color: var(--text);
-         font: 15px/1.45 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; }
-  header { padding-block: 16px; padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); border-bottom: 1px solid var(--line); background: var(--card);
-           display: flex; flex-wrap: wrap; gap: 12px; align-items: end; }
-  header h1 { margin: 0 16px 0 0; font-size: 20px; }
-  main { max-width: 1200px; margin: 0 auto; padding-block: 16px; padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); display: grid; grid-template-columns: minmax(0, 1fr); gap: 16px; }
+  [hidden] { display: none !important; }
+  body { background: var(--grond); color: var(--inkt); font: 400 16px/24px var(--font-sans); }
+  .binnen { max-width: var(--kolom); margin: 0 auto;
+            padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); }
+
+  /* Kop */
+  .kop { padding-block: var(--space-7) var(--space-6); }
+  .kop .binnen { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: var(--space-6); align-items: end; }
+  .kop h1 { margin: var(--space-1) 0 var(--space-5); text-wrap: balance; }
+  .kop__label { margin: 0; color: var(--inkt-gedempt); }
+  .kop__velden { display: flex; flex-wrap: wrap; gap: var(--space-4); align-items: end; }
+  .kop__velden .dw-veld { width: 260px; max-width: 100%; }
+  .kop .dw-spiegel { --maat: 200px; }
+  .vuurband { height: 6px; }
+  #melding { margin: var(--space-4) 0 0; color: var(--inkt-gedempt); min-height: 20px; }
+  #melding:empty { display: none; }
+
+  main { padding-block: var(--space-6) var(--space-8); display: grid; grid-template-columns: minmax(0, 1fr); gap: var(--space-5); }
+
+  /* Kaarten */
+  .kaart { background: var(--grond-verhoogd); border: 1px solid var(--lijn); border-radius: var(--radius-kaart);
+           box-shadow: var(--schaduw-kaart); padding: var(--space-5); min-width: 0; }
+  #secties { display: grid; gap: var(--space-5); }
+  .kaart__kop { display: grid; grid-template-columns: minmax(0, 1fr) auto; column-gap: var(--space-4); align-items: end; }
+  .kaart__code { margin: 0; color: var(--accent); grid-column: 1 / -1; }
+  .kaart h2 { margin: var(--space-1) 0 0; text-wrap: balance; }
+  .status { display: inline-flex; align-items: center; gap: var(--space-2); color: var(--inkt); white-space: nowrap; }
+  .hint { color: var(--inkt-gedempt); margin: var(--space-2) 0 var(--space-4); max-width: 70ch; }
+  .invoer { display: grid; gap: var(--space-3); padding-bottom: var(--space-2); }
+  .invoer > .dw-ster { justify-self: start; }
+
+  /* Rijen met spiegelvelden */
+  .row { display: grid; gap: var(--space-3) var(--space-4); align-items: end; }
+  .dw-veld { max-width: none; min-width: 0; }
+  .dw-veld__label { padding-left: 0; padding-inline: 18px; }
+  .dw-veld__ovaal { height: 48px; }
+  .dw-veld__invoer { padding: 0 18px; min-width: 0; }
+  select.dw-veld__invoer { appearance: none; cursor: pointer; padding-right: 36px;
+    background: linear-gradient(45deg, transparent 50%, var(--op-spiegel) 50%) calc(100% - 22px) 52% / 6px 6px no-repeat,
+                linear-gradient(-45deg, transparent 50%, var(--op-spiegel) 50%) calc(100% - 16px) 52% / 6px 6px no-repeat; }
+  select.dw-veld__invoer option { color: var(--inkt); background: var(--grond-verhoogd); }
+  .dw-veld__invoer::-webkit-calendar-picker-indicator { opacity: .7; }
+
+  .check { display: flex; gap: var(--space-2); align-items: flex-start; font-size: 15px; line-height: 22px; cursor: pointer; }
+  .check input { margin: 4px 0 0; accent-color: var(--accent); width: 16px; height: 16px; flex: none; }
+  .check--prio { align-self: center; padding-bottom: 12px; white-space: nowrap; }
+  .keuzes { display: flex; flex-wrap: wrap; gap: var(--space-2) var(--space-5); }
+
+  /* Tekstvoorstellen in twee kolommen */
+  .cols { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--space-4); margin-top: var(--space-4); }
+  .col-head { display: flex; justify-content: space-between; align-items: center; gap: var(--space-2);
+              min-height: 34px; margin-bottom: var(--space-2); color: var(--inkt-gedempt); }
+  .flex { display: flex; gap: var(--space-2); flex-wrap: wrap; align-items: center; }
+  textarea.draft { width: 100%; display: block; resize: vertical; min-height: 72px; padding: var(--space-3) var(--space-4);
+    font: 400 15px/22px var(--font-sans); color: var(--inkt); background: var(--grond);
+    border: 1px solid var(--lijn); border-radius: var(--radius-kaart); }
+  textarea.draft.edited { border-color: var(--abrikoos-vlak); }
+  textarea:focus-visible, .check input:focus-visible { outline: 2px solid var(--focus); outline-offset: 3px; }
+  .problems { list-style: none; margin: var(--space-3) 0 0; padding: 0; display: grid; gap: var(--space-1); }
+  .problems li, .dw-glasbalk__hulp, .leeg { display: flex; gap: var(--space-2); align-items: center; }
+  .drift { color: var(--inkt-gedempt); margin: var(--space-2) 0 0; }
+  .dw-ster.bevestig { --k: var(--abrikoos-kern); --v: var(--abrikoos-vlak); --r: var(--abrikoos-rand); }
+
+  /* Voorbeeld en simulatie: het vak op de homepage */
+  .instellingen { display: flex; flex-wrap: wrap; gap: var(--space-4); margin-bottom: var(--space-5); }
+  .instellingen .dw-veld { width: 170px; }
+  .voorbeeld { display: grid; gap: var(--space-3); align-content: start; min-width: 0; }
+  .preview-box { max-width: 100%; overflow: hidden; white-space: pre-wrap; padding: var(--space-3) var(--space-4);
+    font: 400 14px/20px var(--font-sans); color: var(--inkt); background: var(--grond);
+    border: 1px solid var(--lijn); border-radius: var(--radius-paneel); }
+  .preview-box.overflow { border: 2px solid var(--koraal-vlak); }
+  #problemen-melding { margin-top: var(--space-5); }
+  #problemen { margin: var(--space-1) 0 0; padding-left: 18px; }
+  .acties { display: flex; flex-wrap: wrap; gap: var(--space-4); align-items: center; margin-top: var(--space-5); }
+  #plan-status { color: var(--inkt-gedempt); }
+
+  /* Planning */
   .scroll-x { overflow-x: auto; }
-  label { font-size: 13px; color: var(--muted); display: block; margin-bottom: 2px; }
-  input, select, textarea, button { font: inherit; color: inherit; }
-  input[type=text], input[type=date], input[type=time], input[type=number], input[type=datetime-local], select, textarea {
-    width: 100%; padding: 6px 8px; border: 1px solid var(--line); border-radius: 6px; background: var(--bg); }
-  textarea { resize: vertical; min-height: 64px; }
-  button { padding: 6px 12px; border-radius: 6px; border: 1px solid var(--line); background: var(--card); cursor: pointer; }
-  button.primary { background: var(--accent); border-color: var(--accent); color: #fff; }
-  button.small { padding: 2px 8px; font-size: 13px; }
-  button.bevestig { border-color: var(--err); color: var(--err); }
-  button:focus-visible, input:focus-visible, select:focus-visible, textarea:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
-  button:disabled { opacity: .5; cursor: not-allowed; }
-  .card { background: var(--card); border: 1px solid var(--line); border-radius: 10px; padding: 14px; }
-  .card h2 { margin: 0 0 8px; font-size: 16px; display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
-  .badge { font-size: 12px; padding: 1px 8px; border-radius: 99px; font-weight: 500; }
-  .badge.req { background: var(--accent-soft); color: var(--accent); }
-  .badge.ok { background: var(--ok-soft); color: var(--ok); }
-  .badge.err { background: var(--err-soft); color: var(--err); }
-  .badge.warn { background: var(--warn-soft); color: var(--warn); }
-  .hint { color: var(--muted); font-size: 13px; margin: 0 0 8px; }
-  .row { display: grid; gap: 8px; align-items: end; margin-bottom: 6px; }
-  .cols { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 10px; }
-  .col-head { font-size: 12px; font-weight: 600; color: var(--muted); text-transform: uppercase; letter-spacing: .04em;
-              display: flex; justify-content: space-between; align-items: center; }
-  .draft.edited { border-color: var(--warn); }
-  .inputs { border-left: 3px solid var(--accent-soft); padding-left: 10px; }
-  .check { display: flex; gap: 6px; align-items: flex-start; font-size: 14px; color: var(--text); margin: 4px 0; }
-  .check input { margin-top: 3px; }
-  .preview-box { border: 2px solid var(--line); border-radius: 8px; padding: 10px 12px; overflow: hidden;
-                 white-space: pre-wrap; font-size: 14px; background: var(--bg); }
-  .preview-box.overflow { border-color: var(--err); }
-  .meta { font-size: 13px; color: var(--muted); margin: 4px 0; }
-  .meta.err { color: var(--err); }
-  ul.problems { margin: 6px 0 0; padding-left: 18px; color: var(--err); font-size: 14px; }
-  table { width: 100%; border-collapse: collapse; font-size: 14px; }
-  td, th { text-align: left; padding: 6px; border-bottom: 1px solid var(--line); vertical-align: top; }
-  .flex { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
-  @media (max-width: 720px) {
-    .cols { grid-template-columns: 1fr; }
-    .row { grid-template-columns: 1fr !important; }
+  table { width: 100%; border-collapse: collapse; }
+  th { text-align: left; color: var(--inkt-gedempt); padding: var(--space-2) var(--space-3); border-bottom: 1px solid var(--lijn); }
+  td { padding: var(--space-3); border-bottom: 1px solid var(--lijn); vertical-align: middle; font-size: 14px; line-height: 20px; }
+  .leeg__veld { width: 72px; height: 44px; border-radius: var(--radius-paneel); flex: none; }
+  .leeg p { margin: 0; color: var(--inkt-gedempt); }
+  #export-json { width: 100%; margin-top: var(--space-4); padding: var(--space-3); font: 400 12px/18px var(--font-mono);
+    color: var(--inkt); background: var(--grond); border: 1px solid var(--lijn); border-radius: var(--radius-paneel); }
+  .kaart > .titel-s { margin: 0 0 var(--space-2); }
+
+  @media (max-width: 760px) {
+    .kop .dw-spiegel { display: none; }
+    .kop .binnen { grid-template-columns: minmax(0, 1fr); }
+    .cols { grid-template-columns: minmax(0, 1fr); }
+    .row { grid-template-columns: minmax(0, 1fr) !important; }
+    .row > .dw-ster { justify-self: start; }
+    .kop h1.titel { font-size: 32px; line-height: 36px; }
   }
+  @media (prefers-reduced-motion: reduce) { * { transition: none !important; } }
 </style>
 </head>
 <body>
-<header>
-  <h1>Boodschapmaker</h1>
-  <div><label for="datum">Dag van de boodschap</label><input type="date" id="datum"></div>
-  <div><label for="volgorde">Kolommen</label>
-    <select id="volgorde"><option value="nl-fr">Nederlands – Frans</option><option value="fr-nl">Français – Néerlandais</option></select></div>
-  <div class="flex">
-    <button id="nieuw">Nieuwe boodschap</button>
-    <button id="kopieer-vorige">Vertrek van vorige dag</button>
+<header class="kop dw-nevel">
+  <div class="binnen">
+    <div>
+      <p class="label kop__label">Dagboodschap · Nederlands en Frans</p>
+      <h1 class="titel">Boodschapmaker</h1>
+      <div class="kop__velden">
+        <label class="dw-veld"><span class="dw-veld__label">Dag van de boodschap</span>
+          <span class="dw-veld__ovaal"><input class="dw-veld__invoer" type="date" id="datum"></span></label>
+        <label class="dw-veld"><span class="dw-veld__label">Kolommen</span>
+          <span class="dw-veld__ovaal"><select class="dw-veld__invoer" id="volgorde">
+            <option value="nl-fr">Nederlands – Frans</option><option value="fr-nl">Français – Néerlandais</option></select></span></label>
+        <div class="flex">
+          <button class="dw-ster dw-ster--klein dw-ivoor" type="button" id="nieuw">Nieuwe boodschap</button>
+          <button class="dw-ster dw-ster--klein dw-sirius" type="button" id="kopieer-vorige">Vertrekken van vorige dag</button>
+        </div>
+      </div>
+      <p class="klein" id="melding" role="status"></p>
+    </div>
+    <div class="dw-spiegel dw-spiegel--liggend" aria-hidden="true"></div>
   </div>
-  <p class="meta" id="melding" role="status" style="flex-basis:100%;margin:0"></p>
 </header>
+<div class="vuurband dw-glas dw-glas--vuur" aria-hidden="true"></div>
 
-<main>
+<main class="binnen">
   <div id="secties"></div>
 
-  <section class="card" id="voorbeeld">
-    <h2>Voorbeeld in het vak van de homepage</h2>
-    <p class="hint">De boodschap moet integraal in het vak passen. Afmetingen en maximum aantal tekens stel je hieronder in.</p>
-    <div class="flex" style="margin-bottom:10px">
-      <div><label for="vak-b">Breedte vak (px)</label><input type="number" id="vak-b" min="200" step="10" style="width:110px"></div>
-      <div><label for="vak-h">Hoogte vak (px)</label><input type="number" id="vak-h" min="100" step="10" style="width:110px"></div>
-      <div><label for="vak-max">Max. tekens</label><input type="number" id="vak-max" min="100" step="50" style="width:110px"></div>
+  <section class="kaart" id="voorbeeld">
+    <p class="label kaart__code">Controle</p>
+    <h2 class="titel-s">Voorbeeld in het vak van de homepage</h2>
+    <p class="hint">De boodschap moet integraal in het vak passen. Stel de afmetingen van het echte vak en het maximum aantal tekens in.</p>
+    <div class="instellingen">
+      <label class="dw-veld"><span class="dw-veld__label">Breedte (px)</span>
+        <span class="dw-veld__ovaal"><input class="dw-veld__invoer data" type="number" id="vak-b" min="200" step="10"></span></label>
+      <label class="dw-veld"><span class="dw-veld__label">Hoogte (px)</span>
+        <span class="dw-veld__ovaal"><input class="dw-veld__invoer data" type="number" id="vak-h" min="100" step="10"></span></label>
+      <label class="dw-veld"><span class="dw-veld__label">Max. tekens</span>
+        <span class="dw-veld__ovaal"><input class="dw-veld__invoer data" type="number" id="vak-max" min="100" step="50"></span></label>
     </div>
     <div class="cols" id="preview-cols"></div>
-    <ul class="problems" id="problemen"></ul>
-    <div class="flex" style="margin-top:12px">
-      <button class="primary" id="inplannen">Inplannen</button>
-      <span class="meta" id="plan-status"></span>
+    <div class="dw-melding dw-glas dw-glas--zacht" id="problemen-melding" role="status" hidden>
+      <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="8.5"/><path d="M12 7.5v5.5M12 16.2v.3"/></svg>
+      <p><strong>Nog niet klaar om in te plannen</strong></p>
+      <ul id="problemen"></ul>
+    </div>
+    <div class="acties">
+      <button class="dw-ster dw-koraal" type="button" id="inplannen">Inplannen</button>
+      <span class="klein" id="plan-status"></span>
     </div>
   </section>
 
-  <section class="card">
-    <h2>Ingeplande boodschappen</h2>
-    <p class="hint">Opgeslagen in deze browser. Een boodschap wordt getoond vanaf 07:00 op haar dag.</p>
-    <div class="scroll-x"><table><thead><tr><th>Dag</th><th>Coördinatie</th><th>Opgeslagen</th><th></th></tr></thead><tbody id="planning"></tbody></table></div>
-    <div class="flex" style="margin-top:10px">
-      <button id="export">Exporteren (JSON)</button>
-      <label class="flex" style="margin:0"><button id="import-knop" type="button">Importeren</button>
-        <input type="file" id="import" accept="application/json" hidden></label>
+  <section class="kaart">
+    <p class="label kaart__code">Planning</p>
+    <h2 class="titel-s">Ingeplande boodschappen</h2>
+    <p class="hint">Bewaard in deze browser. Een boodschap verschijnt vanaf 07:00 op haar dag.</p>
+    <div class="scroll-x"><table>
+      <thead><tr><th class="label">Dag</th><th class="label">Coördinatie</th><th class="label">Opgeslagen</th><th></th></tr></thead>
+      <tbody id="planning"></tbody></table></div>
+    <div class="acties">
+      <button class="dw-ster dw-ster--klein dw-sirius" type="button" id="export">Planning kopiëren (JSON)</button>
+      <button class="dw-ster dw-ster--klein dw-sirius" type="button" id="import-knop">Planning importeren</button>
+      <input type="file" id="import" accept="application/json" hidden>
     </div>
-    <textarea id="export-json" rows="8" readonly hidden style="margin-top:10px;font-family:ui-monospace,monospace;font-size:12px"></textarea>
+    <textarea id="export-json" rows="8" readonly hidden aria-label="Planning als JSON"></textarea>
   </section>
 
-  <section class="card">
-    <h2>Simulatie homepage</h2>
-    <p class="hint">Wat ziet iemand die de homepage op dit moment opent?</p>
-    <div class="flex" style="margin-bottom:10px">
-      <div><label for="sim-moment">Moment</label><input type="datetime-local" id="sim-moment"></div>
-      <div><label for="sim-taal">Taal</label><select id="sim-taal"><option value="nl">Nederlands</option><option value="fr">Français</option></select></div>
+  <section class="kaart">
+    <p class="label kaart__code">Simulatie</p>
+    <h2 class="titel-s">Wat toont de homepage?</h2>
+    <p class="hint">Kies een moment en een taal om te zien wat iemand dan in het vak leest.</p>
+    <div class="instellingen">
+      <label class="dw-veld" style="width:260px"><span class="dw-veld__label">Moment</span>
+        <span class="dw-veld__ovaal"><input class="dw-veld__invoer" type="datetime-local" id="sim-moment"></span></label>
+      <label class="dw-veld"><span class="dw-veld__label">Taal</span>
+        <span class="dw-veld__ovaal"><select class="dw-veld__invoer" id="sim-taal">
+          <option value="nl">Nederlands</option><option value="fr">Français</option></select></span></label>
     </div>
     <div class="preview-box" id="sim-vak"></div>
   </section>

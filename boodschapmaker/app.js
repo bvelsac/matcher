@@ -102,6 +102,33 @@ function el(tag, attrs = {}, ...kinderen) {
   for (const k of kinderen.flat(Infinity)) if (k != null) e.append(k);
   return e;
 }
+// Lijnicoon van 24×24; de stijl van de sterknop zet streek en kleur.
+function icoon(pad) {
+  const ns = 'http://www.w3.org/2000/svg';
+  const svg = document.createElementNS(ns, 'svg');
+  svg.setAttribute('viewBox', '0 0 24 24');
+  svg.setAttribute('aria-hidden', 'true');
+  const path = document.createElementNS(ns, 'path');
+  path.setAttribute('d', pad);
+  svg.append(path);
+  return svg;
+}
+const PAD = { kruis: 'M6.5 6.5l11 11M17.5 6.5l-11 11', plus: 'M12 5v14M5 12h14' };
+
+// Spiegelveld: een invoerveld van één regel in een ovaal spiegelvlak.
+function veld(label, attrs, tag = 'input') {
+  const invoer = el(tag, Object.assign(tag === 'input' ? { type: 'text' } : {}, attrs, { class: 'dw-veld__invoer' }));
+  return el('label', { class: 'dw-veld' }, el('span', { class: 'dw-veld__label' }, label),
+    el('span', { class: 'dw-veld__ovaal' }, invoer));
+}
+
+// Sterknop in een sterkleur; standaard klein.
+function sterknop(inhoud, kleur, attrs = {}, maat = 'dw-ster--klein') {
+  return el('button', Object.assign({ type: 'button', class: `dw-ster ${maat} dw-${kleur}` }, attrs), inhoud);
+}
+
+function chip(kleur) { return el('i', { class: `dw-chip dw-${kleur}`, 'aria-hidden': 'true' }); }
+
 const leeg = s => !s || !s.trim();
 const fr = item => (item.fr && item.fr.trim()) || '';
 const toegelaten = c => state.moderneAuteurs || !MODERN.has(c.auteur);
@@ -237,7 +264,7 @@ const SECTIES = [
     key: 'werklast', titel: '3. Inschatting van de werklast', verplicht: true,
     hint: 'Wordt het zwaar, of is er genoeg personeel om op een normaal uur te eindigen?',
     invoer: () => [
-      el('div', { class: 'flex' }, Object.entries(WERKLAST).map(([k, w]) =>
+      el('div', { class: 'keuzes' }, Object.entries(WERKLAST).map(([k, w]) =>
         el('label', { class: 'check' },
           el('input', { type: 'radio', name: 'werklast', checked: state.werklast === k,
             onchange: () => { state.werklast = k; bijwerken(); } }), w.label))),
@@ -253,8 +280,7 @@ const SECTIES = [
     key: 'coordinator', titel: '4. Coördinator', verplicht: true,
     hint: 'Wie coördineert vandaag? Dit wordt altijd vermeld.',
     invoer: () => el('div', { class: 'row', style: 'grid-template-columns: minmax(0, 360px)' },
-      el('div', {}, el('label', {}, 'Naam'),
-        el('input', { type: 'text', value: state.coordinator, oninput: e => { state.coordinator = e.target.value; bijwerken(); } }))),
+      veld('Naam', { value: state.coordinator, oninput: e => { state.coordinator = e.target.value; bijwerken(); } })),
     tekst: () => ({
       nl: `Coördinatie: ${state.coordinator.trim()}`,
       fr: `Coordination : ${state.coordinator.trim()}`,
@@ -328,10 +354,8 @@ function lijstControle(sectie, naam, talen) {
 
 function tweetaligVeld(obj, labelNl, labelFr) {
   return el('div', { class: 'row', style: 'grid-template-columns: 1fr 1fr' },
-    el('div', {}, el('label', {}, labelNl),
-      el('input', { type: 'text', value: obj.nl, oninput: e => { obj.nl = e.target.value; bijwerken(); } })),
-    el('div', {}, el('label', {}, labelFr),
-      el('input', { type: 'text', value: obj.fr, oninput: e => { obj.fr = e.target.value; bijwerken(); } })));
+    veld(labelNl, { value: obj.nl, oninput: e => { obj.nl = e.target.value; bijwerken(); } }),
+    veld(labelFr, { value: obj.fr, oninput: e => { obj.fr = e.target.value; bijwerken(); } }));
 }
 
 function geenVinkje(sectie, tekst) {
@@ -341,33 +365,32 @@ function geenVinkje(sectie, tekst) {
 }
 
 function verwijderKnop(lijst, i) {
-  return el('button', { class: 'small', type: 'button', title: 'Verwijderen',
-    onclick: () => { lijst.splice(i, 1); tekenen(); } }, '✕');
+  return sterknop(icoon(PAD.kruis), 'ivoor', { 'aria-label': 'Verwijderen', title: 'Verwijderen',
+    onclick: () => { lijst.splice(i, 1); tekenen(); } }, 'dw-ster--rond dw-ster--klein');
 }
 
 function lijstInvoer(sectie, velden, sjabloon, geenTekst) {
-  const kolommen = velden.map(v => v.veld === 'wie' ? '160px' : '1fr').join(' ') + ' auto';
+  const kolommen = velden.map(v => v.veld === 'wie' ? '180px' : '1fr').join(' ') + ' auto';
   const rijen = sectie.geen ? [] : sectie.items.map((item, i) =>
     el('div', { class: 'row', style: `grid-template-columns: ${kolommen}` },
-      velden.map(v => el('div', {}, el('label', {}, v.label),
-        el('input', { type: 'text', value: item[v.veld] || '', oninput: e => { item[v.veld] = e.target.value; bijwerken(); } }))),
+      velden.map(v => veld(v.label, { value: item[v.veld] || '', oninput: e => { item[v.veld] = e.target.value; bijwerken(); } })),
       verwijderKnop(sectie.items, i)));
   return [
     geenVinkje(sectie, geenTekst),
     rijen,
-    sectie.geen ? null : el('button', { class: 'small', type: 'button',
-      onclick: () => { sectie.items.push({ ...sjabloon }); tekenen(); } }, '+ Punt toevoegen'),
+    sectie.geen ? null : sterknop([icoon(PAD.plus), 'Punt toevoegen'], 'roos',
+      { onclick: () => { sectie.items.push({ ...sjabloon }); tekenen(); } }),
   ];
 }
 
 function vergaderingInvoer() {
   const b = state.b;
   const rijen = b.geen ? [] : b.vergaderingen.map((v, i) => {
-    const veld = (naam, label, type = 'text') => el('div', {}, el('label', {}, label),
-      el('input', { type, value: v[naam], oninput: e => { v[naam] = e.target.value; bijwerken(); } }));
-    return el('div', { class: 'row', style: 'grid-template-columns: 100px 1fr 1fr 160px auto auto' },
-      veld('uur', 'Uur', 'time'), veld('nl', 'Vergadering (NL)'), veld('fr', 'Réunion (FR)'), veld('wie', 'Wie'),
-      el('label', { class: 'check', title: 'Deze vergadering heeft prioriteit' },
+    const v1 = (naam, label, type = 'text') =>
+      veld(label, { type, value: v[naam], oninput: e => { v[naam] = e.target.value; bijwerken(); } });
+    return el('div', { class: 'row', style: 'grid-template-columns: 140px 1fr 1fr 180px auto auto' },
+      v1('uur', 'Uur', 'time'), v1('nl', 'Vergadering (NL)'), v1('fr', 'Réunion (FR)'), v1('wie', 'Wie'),
+      el('label', { class: 'check check--prio', title: 'Deze vergadering heeft prioriteit' },
         el('input', { type: 'radio', name: 'prio', checked: v.prio,
           onchange: () => { b.vergaderingen.forEach(x => { x.prio = x === v; }); bijwerken(); } }), 'Prioriteit'),
       verwijderKnop(b.vergaderingen, i));
@@ -375,31 +398,31 @@ function vergaderingInvoer() {
   return [
     geenVinkje(b, 'Geen vergaderingen waarvoor verslag nodig is'),
     rijen,
-    b.geen ? null : el('button', { class: 'small', type: 'button',
-      onclick: () => { b.vergaderingen.push({ uur: '', nl: '', fr: '', wie: '', prio: false }); tekenen(); } }, '+ Vergadering toevoegen'),
-    el('div', { style: 'margin-top:8px' }, tweetaligVeld(b.noot, 'Opmerking (NL, optioneel)', 'Remarque (FR, facultatif)')),
+    b.geen ? null : sterknop([icoon(PAD.plus), 'Vergadering toevoegen'], 'roos',
+      { onclick: () => { b.vergaderingen.push({ uur: '', nl: '', fr: '', wie: '', prio: false }); tekenen(); } }),
+    el('div', { style: 'margin-top: var(--space-4)' }, tweetaligVeld(b.noot, 'Opmerking (NL, optioneel)', 'Remarque (FR, facultatif)')),
   ];
 }
 
 function deadlineInvoer() {
   return [
     state.deadlines.map((d, i) => {
-      const veld = (naam, label, type = 'text') => el('div', {}, el('label', {}, label),
-        el('input', { type, value: d[naam], oninput: e => { d[naam] = e.target.value; bijwerken(); } }));
-      return el('div', { class: 'row', style: 'grid-template-columns: 1fr 1fr 150px 160px auto' },
-        veld('nl', 'Project (NL)'), veld('fr', 'Projet (FR)'), veld('datum', 'Deadline', 'date'), veld('wie', 'Wie'),
+      const v1 = (naam, label, type = 'text') =>
+        veld(label, { type, value: d[naam], oninput: e => { d[naam] = e.target.value; bijwerken(); } });
+      return el('div', { class: 'row', style: 'grid-template-columns: 1fr 1fr 190px 180px auto' },
+        v1('nl', 'Project (NL)'), v1('fr', 'Projet (FR)'), v1('datum', 'Deadline', 'date'), v1('wie', 'Wie'),
         verwijderKnop(state.deadlines, i));
     }),
-    el('button', { class: 'small', type: 'button',
-      onclick: () => { state.deadlines.push({ nl: '', fr: '', datum: '', wie: '' }); tekenen(); } }, '+ Deadline toevoegen'),
+    sterknop([icoon(PAD.plus), 'Deadline toevoegen'], 'roos',
+      { onclick: () => { state.deadlines.push({ nl: '', fr: '', datum: '', wie: '' }); tekenen(); } }),
   ];
 }
 
 function citaatInvoer() {
   const pool = CITATEN.filter(toegelaten);
-  const select = el('select', { onchange: e => { state.citaat = Number(e.target.value); bijwerken(); } },
+  const select = el('select', { class: 'dw-veld__invoer', onchange: e => { state.citaat = Number(e.target.value); bijwerken(); } },
     pool.map(c => el('option', { value: String(c.id), selected: c.id === state.citaat },
-      `${c.auteur} (${c.status.toLowerCase()}): ${c.nl.length > 90 ? c.nl.slice(0, 90) + '…' : c.nl}`)));
+      `${c.auteur} (${c.status.toLowerCase()}): ${c.nl.length > 70 ? c.nl.slice(0, 70) + '…' : c.nl}`)));
   if (!pool.some(c => c.id === state.citaat)) select.prepend(el('option', { value: '', selected: true }, '— kies een citaat —'));
   return [
     SLAGEN.map(s => el('label', { class: 'check' },
@@ -407,9 +430,10 @@ function citaatInvoer() {
         state.slagen = e.target.checked ? [...state.slagen, s.id] : state.slagen.filter(x => x !== s.id);
         bijwerken();
       } }), `${s.nl} / ${s.fr}`)),
-    el('div', { class: 'row', style: 'grid-template-columns: 1fr auto; margin-top:8px' },
-      el('div', {}, el('label', {}, `Citaat (${pool.length} beschikbaar)`), select),
-      el('button', { type: 'button', onclick: () => { state.citaat = willekeurigCitaat(); tekenen(); } }, '🎲 Ander citaat')),
+    el('div', { class: 'row', style: 'grid-template-columns: 1fr auto; margin-top: var(--space-4)' },
+      el('label', { class: 'dw-veld dw-veld--breed' }, el('span', { class: 'dw-veld__label' }, `Citaat (${pool.length} beschikbaar)`),
+        el('span', { class: 'dw-veld__ovaal' }, select)),
+      sterknop('Ander citaat kiezen', 'sirius', { onclick: () => { state.citaat = willekeurigCitaat(); tekenen(); } })),
     el('label', { class: 'check' },
       el('input', { type: 'checkbox', checked: state.moderneAuteurs, onchange: e => { state.moderneAuteurs = e.target.checked; tekenen(); } }),
       'Ook auteurs van na de 19e eeuw tonen (volgens de nota niet de bedoeling)'),
@@ -433,26 +457,29 @@ function tekenen() {
   const houder = document.getElementById('secties');
   houder.replaceChildren(...SECTIES.map(s => {
     const invoer = s.invoer();
-    return el('section', { class: 'card', id: 'sectie-' + s.key, style: 'margin-bottom:16px' },
-      el('h2', {}, s.titel,
-        el('span', { class: 'badge ' + (s.verplicht ? 'req' : '') }, s.verplicht ? 'verplicht' : 'optioneel'),
-        el('span', { class: 'badge status' })),
+    const [code, naam] = s.titel.split('. ');
+    return el('section', { class: 'kaart', id: 'sectie-' + s.key },
+      el('div', { class: 'kaart__kop' },
+        el('p', { class: 'label kaart__code' }, `Punt ${code} \u00B7 ${s.verplicht ? 'verplicht' : 'optioneel'}`),
+        el('h2', { class: 'titel-s' }, naam),
+        el('span', { class: 'status klein', role: 'status' })),
       el('p', { class: 'hint' }, s.hint),
-      invoer ? el('div', { class: 'inputs' }, invoer) : null,
+      invoer ? el('div', { class: 'invoer' }, invoer) : null,
       el('div', { class: 'cols' }, talen().map(t => el('div', {},
-        el('div', { class: 'col-head' }, el('span', {}, TAALNAAM[t]),
+        el('div', { class: 'col-head' }, el('span', { class: 'label' }, TAALNAAM[t]),
           el('span', { class: 'flex' },
-            el('span', { class: 'badge warn aangepast-label', hidden: true }, 'handmatig aangepast'),
-            el('button', { class: 'small herstel', type: 'button', hidden: true, title: 'Het voorstel van het systeem terugzetten',
-              onclick: () => { delete (state.aangepast[s.key] || {})[t]; bijwerken(); } }, 'Voorstel herstellen'))),
+            el('span', { class: 'dw-badge dw-glas dw-glas--zacht aangepast-label', hidden: true }, 'Aangepast'),
+            sterknop('Voorstel herstellen', 'ivoor', { class: 'dw-ster dw-ster--klein dw-ivoor herstel', hidden: true,
+              title: 'Het voorstel van het systeem terugzetten',
+              onclick: () => { delete (state.aangepast[s.key] || {})[t]; bijwerken(); } }))),
         el('textarea', { class: 'draft', 'data-sectie': s.key, 'data-taal': t, rows: 3,
           oninput: e => {
             const a = state.aangepast[s.key] = state.aangepast[s.key] || {};
             a[t] = { tekst: e.target.value, basis: s.tekst()[t] };
             bijwerken(e.target);
           } })))),
-      el('ul', { class: 'problems' }),
-      el('p', { class: 'meta drift', hidden: true }));
+      el('ul', { class: 'problems klein' }),
+      el('p', { class: 'klein drift', hidden: true }));
   }));
   bijwerken();
 }
@@ -494,10 +521,8 @@ function bijwerken(actief) {
       : '';
     const enkelEen = !!aangepast.nl !== !!aangepast.fr ? ['Je paste maar één taal handmatig aan: controleer of de vertaling nog klopt.'] : [];
     const probs = s.controle();
-    kaart.querySelector('.problems').replaceChildren(...probs.concat(enkelEen).map(x => el('li', {}, x)));
-    const st = kaart.querySelector('.status');
-    st.className = 'badge status ' + (probs.length ? 'err' : 'ok');
-    st.textContent = probs.length ? 'onvolledig' : 'in orde';
+    kaart.querySelector('.problems').replaceChildren(...probs.concat(enkelEen).map(x => el('li', {}, chip('citroen'), x)));
+    kaart.querySelector('.status').replaceChildren(chip(probs.length ? 'abrikoos' : 'pistache'), probs.length ? 'Onvolledig' : 'In orde');
   }
   voorbeeldTekenen();
   schrijven(OPSLAG_CONCEPT, state);
@@ -509,22 +534,32 @@ function voorbeeldTekenen() {
     const tekst = volledigeTekst(t);
     const vak = el('div', { class: 'preview-box', 'data-taal': t,
       style: `width:min(100%, ${instellingen.breedte}px); height:${instellingen.hoogte}px` }, tekst);
-    return el('div', {},
-      el('div', { class: 'col-head' }, el('span', {}, TAALNAAM[t]),
-        el('button', { class: 'small', type: 'button', onclick: () => kopieer(tekst) }, 'Kopiëren')),
+    const n = tekst.length;
+    const pct = Math.min(100, Math.round(n / instellingen.max * 100));
+    return el('div', { class: 'voorbeeld' },
+      el('div', { class: 'col-head' }, el('span', { class: 'label' }, TAALNAAM[t]),
+        sterknop('Kopiëren', 'sirius', { onclick: () => kopieer(tekst) })),
       vak,
-      el('p', { class: 'meta tellen' }, `${tekst.length} / ${instellingen.max} tekens`));
+      el('div', { class: 'dw-glasbalk' },
+        el('div', { class: 'dw-glasbalk__kop' }, el('span', { id: 'teller-' + t }, 'Tekens'),
+          el('span', { class: 'dw-glasbalk__waarde' }, `${duizendtal(n)} / ${duizendtal(instellingen.max)}`)),
+        el('div', { class: 'dw-glasbalk__spoor', role: 'meter', 'aria-labelledby': 'teller-' + t,
+          'aria-valuemin': '0', 'aria-valuemax': String(instellingen.max), 'aria-valuenow': String(n) },
+          el('span', { class: 'dw-glasbalk__vulling', style: `--waarde: ${pct}%` })),
+        el('span', { class: 'dw-glasbalk__hulp' })));
   }));
   cols.querySelectorAll('.preview-box').forEach(vak => {
     const over = vak.scrollHeight > vak.clientHeight + 1;
     vak.classList.toggle('overflow', over);
-    const n = vak.textContent.length;
-    const meta = vak.nextElementSibling;
-    meta.classList.toggle('err', over || n > instellingen.max);
-    if (over) meta.textContent += ' – past niet in het vak';
+    const hulp = vak.parentElement.querySelector('.dw-glasbalk__hulp');
+    const teLang = vak.textContent.length > instellingen.max;
+    hulp.replaceChildren(...(over || teLang
+      ? [chip('koraal'), [teLang ? 'Te veel tekens' : null, over ? 'past niet in het vak' : null].filter(Boolean).join(', ')]
+      : [chip('pistache'), 'Past in het vak']));
   });
   const probs = alleProblemen();
   document.getElementById('problemen').replaceChildren(...probs.map(x => el('li', {}, x)));
+  document.getElementById('problemen-melding').hidden = !probs.length;
   const knop = document.getElementById('inplannen');
   knop.disabled = probs.length > 0;
   knop.textContent = `Inplannen voor ${datumTekst(state.datum, 'nl') || '…'}`;
@@ -532,6 +567,8 @@ function voorbeeldTekenen() {
     ? `Nog ${probs.length} punt(en) op te lossen.`
     : (planning()[state.datum] ? 'Er staat al een boodschap voor deze dag; inplannen overschrijft ze.' : '');
 }
+
+function duizendtal(n) { return String(n).replace(/\B(?=(\d{3})+(?!\d))/g, '\u00A0'); }
 
 function kopieer(tekst) {
   navigator.clipboard?.writeText(tekst).catch(() => {});
@@ -558,17 +595,19 @@ function planningTekenen() {
   const body = document.getElementById('planning');
   const dagen = Object.keys(p).sort();
   if (!dagen.length) {
-    body.replaceChildren(el('tr', {}, el('td', { colspan: '4', class: 'meta' }, 'Nog niets ingepland.')));
+    body.replaceChildren(el('tr', {}, el('td', { colspan: '4' },
+      el('div', { class: 'leeg' }, el('div', { class: 'dw-schijven dw-schijven--fijn leeg__veld', 'aria-hidden': 'true' }),
+        el('p', { class: 'klein' }, 'Nog niets ingepland. Vul de boodschap in en klik op \u201CInplannen\u201D.')))));
   } else {
     body.replaceChildren(...dagen.map(d => el('tr', {},
       el('td', {}, datumTekst(d, 'nl')),
       el('td', {}, p[d].toestand?.coordinator || ''),
-      el('td', {}, new Date(p[d].opgeslagen).toLocaleString('nl-BE')),
-      el('td', { class: 'flex' },
-        el('button', { class: 'small', type: 'button', onclick: () => laden(p[d].toestand) }, 'Openen'),
-        el('button', { class: 'small', type: 'button', onclick: e => tweeStappen(e.currentTarget, 'Zeker verwijderen?', () => {
+      el('td', { class: 'data' }, new Date(p[d].opgeslagen).toLocaleString('nl-BE')),
+      el('td', {}, el('div', { class: 'flex' },
+        sterknop('Openen', 'sirius', { onclick: () => laden(p[d].toestand) }),
+        sterknop('Verwijderen', 'ivoor', { onclick: e => tweeStappen(e.currentTarget, 'Zeker verwijderen?', () => {
           const q = planning(); delete q[d]; schrijven(OPSLAG_PLANNING, q); planningTekenen(); simuleren();
-        }) }, 'Verwijderen')))));
+        }) }))))));
   }
   simuleren();
 }

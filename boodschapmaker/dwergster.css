@@ -1,0 +1,421 @@
+@import url("https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=Fraunces:opsz,wght,SOFT@9..144,300..700,0..100&family=Hanken+Grotesk:wght@400;500;600&display=swap");
+
+/* Dwergster — tokens uit project/tokens.json en componenten uit project/components/bundle.css
+   van het design system Dwergster (https://claude.ai/artifact/DdXtcFEqtxigRJMmsKcUJx).
+   Nacht (donker) is het hoofdthema; Nevel (licht) volgt de systeemvoorkeur of data-theme="light". */
+
+:root {
+  --sirius-kern: #a8c2fb;
+  --sirius-vlak: #a6bff8;
+  --sirius-rand: #9eb4e9;
+  --abrikoos-kern: #f8cb8a;
+  --abrikoos-vlak: #f6c485;
+  --abrikoos-rand: #d7a86b;
+  --roos-kern: #f9aec3;
+  --roos-vlak: #eea6ba;
+  --roos-rand: #c58a8e;
+  --koraal-kern: #f47b68;
+  --koraal-vlak: #ec7464;
+  --koraal-rand: #bb6150;
+  --ivoor-kern: #fbfbfd;
+  --ivoor-vlak: #f4f4f4;
+  --ivoor-rand: #d2c9bf;
+  --citroen-kern: #f1fdb1;
+  --citroen-vlak: #ebf3a8;
+  --citroen-rand: #c0c37b;
+  --pistache-kern: #dbfeba;
+  --pistache-vlak: #ccecac;
+  --pistache-rand: #97a37d;
+  --azuur-kern: #85c1fa;
+  --azuur-vlak: #78b3ef;
+  --azuur-rand: #4f73b5;
+  --glas-50: #fdece4;
+  --glas-100: #fbd5c5;
+  --glas-200: #f9b59a;
+  --glas-300: #ff8f54;
+  --glas-400: #e76839;
+  --glas-500: #cd4c27;
+  --glas-600: #b83415;
+  --glas-700: #9f2713;
+  --glas-800: #7c190d;
+  --glas-900: #690a07;
+  --glas-950: #4d0602;
+  --glas-glans: #ffca76;
+  --mist-50: #efefef;
+  --mist-100: #d9d9d9;
+  --mist-200: #b2b2b2;
+  --mist-300: #969696;
+  --mist-400: #848484;
+  --mist-500: #666666;
+  --mist-600: #4f4f4f;
+  --mist-700: #424242;
+  --mist-800: #333333;
+  --mist-900: #222222;
+  --mist-950: #0e0e0e;
+  --spiegel-glans: #dcc7a8;
+  --spiegel-licht: #c4af94;
+  --spiegel-vlak: #ab9476;
+  --spiegel-schaduw: #876f58;
+  --spiegel-diep: #6e5b51;
+  --spiegel-rand: #302919;
+  --spiegel-haarlijn: #bbae9b;
+  --spiegel-kamer: #14223d;
+  --op-glas: #fff6f1;
+  --op-ster: #1b1612;
+  --op-spiegel: #1b1612;
+  --op-spiegel-gedempt: #352c23;
+  --paneel: #000000;
+  --paneel-inkt: var(--mist-50);
+  --paneel-gedempt: var(--mist-300);
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-5: 24px;
+  --space-6: 32px;
+  --space-7: 48px;
+  --space-8: 64px;
+  --radius-paneel: 2px;
+  --radius-kaart: 14px;
+  --radius-rond: 9999px;
+  --radius-ovaal: 50%;
+  --streep-hoek: 31.5deg;
+  --spiegel-kanteling: -12deg;
+  --font-display: "Fraunces", "Iowan Old Style", Georgia, serif;
+  --font-sans: "Hanken Grotesk", ui-sans-serif, system-ui, sans-serif;
+  --font-mono: "DM Mono", ui-monospace, "SF Mono", Menlo, monospace;
+  --grond: var(--mist-950);
+  --grond-verhoogd: var(--mist-900);
+  --lijn: var(--mist-800);
+  --inkt: var(--mist-50);
+  --inkt-gedempt: var(--mist-300);
+  --accent: var(--glas-400);
+  --op-accent: var(--mist-950);
+  --accent-zacht: var(--glas-950);
+  --accent-zacht-tekst: var(--glas-100);
+  --glasvlak-diep: var(--glas-950);
+  --glasvlak-vlak: var(--glas-900);
+  --glasvlak-licht: var(--glas-800);
+  --glasvlak-glinster: var(--glas-700);
+  --glasvlak-vonk: var(--glas-600);
+  --focus: var(--glas-300);
+  --ster-omtrek: #0e0e0e00;
+  --nevel-hoog: var(--mist-500);
+  --nevel-midden: var(--mist-700);
+  --nevel-laag: var(--mist-950);
+  --schijf-grond: var(--mist-800);
+  --schijf-vlak: var(--mist-700);
+  --schijf-ring: var(--mist-500);
+  --schijf-gleuf: var(--mist-950);
+  --schijf-donker: var(--mist-950);
+  --schaduw-spiegel: 0 24px 48px -16px rgba(0,0,0,0.7);
+  --schaduw-kaart: 0 1px 0 rgba(255,255,255,0.04), 0 12px 28px -14px rgba(0,0,0,0.8);
+  color-scheme: dark;
+}
+@media (prefers-color-scheme: light) {
+  :root:not([data-theme="dark"]) {
+    --grond: var(--mist-50);
+    --grond-verhoogd: #fafafa;
+    --lijn: var(--mist-200);
+    --inkt: var(--mist-950);
+    --inkt-gedempt: var(--mist-600);
+    --accent: var(--glas-700);
+    --op-accent: #ffffff;
+    --accent-zacht: var(--glas-100);
+    --accent-zacht-tekst: var(--glas-800);
+    --glasvlak-diep: var(--glas-200);
+    --glasvlak-vlak: var(--glas-100);
+    --glasvlak-licht: var(--glas-50);
+    --glasvlak-glinster: #ffffff;
+    --glasvlak-vonk: var(--glas-300);
+    --focus: var(--glas-700);
+    --ster-omtrek: #0e0e0e80;
+    --nevel-hoog: #ffffff;
+    --nevel-midden: var(--mist-100);
+    --nevel-laag: var(--mist-200);
+    --schijf-grond: var(--mist-100);
+    --schijf-vlak: var(--mist-50);
+    --schijf-ring: var(--mist-300);
+    --schijf-gleuf: var(--mist-500);
+    --schijf-donker: var(--mist-400);
+    --schaduw-spiegel: 0 18px 36px -16px rgba(14,14,14,0.35);
+    --schaduw-kaart: 0 1px 2px rgba(14,14,14,0.08), 0 10px 24px -14px rgba(14,14,14,0.3);
+    color-scheme: light;
+  }
+}
+:root[data-theme="light"] {
+  --grond: var(--mist-50);
+  --grond-verhoogd: #fafafa;
+  --lijn: var(--mist-200);
+  --inkt: var(--mist-950);
+  --inkt-gedempt: var(--mist-600);
+  --accent: var(--glas-700);
+  --op-accent: #ffffff;
+  --accent-zacht: var(--glas-100);
+  --accent-zacht-tekst: var(--glas-800);
+  --glasvlak-diep: var(--glas-200);
+  --glasvlak-vlak: var(--glas-100);
+  --glasvlak-licht: var(--glas-50);
+  --glasvlak-glinster: #ffffff;
+  --glasvlak-vonk: var(--glas-300);
+  --focus: var(--glas-700);
+  --ster-omtrek: #0e0e0e80;
+  --nevel-hoog: #ffffff;
+  --nevel-midden: var(--mist-100);
+  --nevel-laag: var(--mist-200);
+  --schijf-grond: var(--mist-100);
+  --schijf-vlak: var(--mist-50);
+  --schijf-ring: var(--mist-300);
+  --schijf-gleuf: var(--mist-500);
+  --schijf-donker: var(--mist-400);
+  --schaduw-spiegel: 0 18px 36px -16px rgba(14,14,14,0.35);
+  --schaduw-kaart: 0 1px 2px rgba(14,14,14,0.08), 0 10px 24px -14px rgba(14,14,14,0.3);
+  color-scheme: light;
+}
+
+.titel-xl { font: 300 64px/64px var(--font-display); letter-spacing: -0.02em; }
+.titel { font: 400 40px/44px var(--font-display); letter-spacing: -0.01em; }
+.titel-s { font: 500 26px/32px var(--font-display); }
+.kop { font: 600 18px/24px var(--font-sans); }
+.body { font: 400 16px/24px var(--font-sans); }
+.klein { font: 400 14px/20px var(--font-sans); }
+.label { font: 500 12px/16px var(--font-mono); letter-spacing: 0.08em; }
+.data { font: 400 14px/20px var(--font-mono); }
+
+/* Dwergster — componentstijlen. Waarden komen uit tokens.css; hier staat alleen hoe ze gecombineerd worden. */
+
+body { margin: 0; background: var(--grond); color: var(--inkt); font-family: var(--font-sans); -webkit-font-smoothing: antialiased; }
+.titel-xl, .titel, .titel-s, .dw-display { font-family: var(--font-display); font-variation-settings: "SOFT" 100; }
+.label { text-transform: uppercase; }
+.data { font-variant-numeric: tabular-nums; }
+
+/* ── Sterren: elke kleurklasse zet de drie stops van één ster ───────────── */
+:where(.dw-ster, .dw-chip, .dw-bol, .dw-staal) { --k: var(--sirius-kern); --v: var(--sirius-vlak); --r: var(--sirius-rand); }
+.dw-sirius   { --k: var(--sirius-kern);   --v: var(--sirius-vlak);   --r: var(--sirius-rand); }
+.dw-abrikoos { --k: var(--abrikoos-kern); --v: var(--abrikoos-vlak); --r: var(--abrikoos-rand); }
+.dw-roos     { --k: var(--roos-kern);     --v: var(--roos-vlak);     --r: var(--roos-rand); }
+.dw-koraal   { --k: var(--koraal-kern);   --v: var(--koraal-vlak);   --r: var(--koraal-rand); }
+.dw-ivoor    { --k: var(--ivoor-kern);    --v: var(--ivoor-vlak);    --r: var(--ivoor-rand); }
+.dw-citroen  { --k: var(--citroen-kern);  --v: var(--citroen-vlak);  --r: var(--citroen-rand); }
+.dw-pistache { --k: var(--pistache-kern); --v: var(--pistache-vlak); --r: var(--pistache-rand); }
+.dw-azuur    { --k: var(--azuur-kern);    --v: var(--azuur-vlak);    --r: var(--azuur-rand); }
+
+/* Het sterverloop op een cirkel: de gemeten randverdonkering.
+   kern 0% → vlak 55% → 29% rand op 75% → 65% rand op 88% → rand vanaf 96%. Nooit egaal vullen. */
+.dw-bol, .dw-chip, .dw-staal__bol, .dw-ster.dw-ster--rond {
+  background: radial-gradient(circle closest-side,
+    var(--k) 0%,
+    color-mix(in srgb, var(--k), var(--v) 27%) 30%,
+    var(--v) 55%,
+    color-mix(in srgb, var(--v), var(--r) 29%) 75%,
+    color-mix(in srgb, var(--v), var(--r) 65%) 88%,
+    var(--r) 96%);
+}
+
+/* ── Sterknop ────────────────────────────────────────────────────────────── */
+/* Op een pil volgt de verdonkering de omtrek (inset-schaduw) in plaats van een ellips,
+   zodat de rand overal even breed donkert — net als de rand van de bol. */
+.dw-ster {
+  --ster-binnen: inset 0 0 10px 0 color-mix(in srgb, var(--r) 75%, transparent), inset 0 0 2px 0 color-mix(in srgb, var(--r) 80%, transparent);
+  appearance: none; border: 0; margin: 0; cursor: pointer;
+  display: inline-flex; align-items: center; justify-content: center; gap: var(--space-2);
+  height: 44px; padding: 0 var(--space-5); border-radius: var(--radius-rond);
+  font: 600 15px/1 var(--font-sans); letter-spacing: 0.01em; color: var(--op-ster);
+  background: radial-gradient(closest-side, var(--k) 0%, color-mix(in srgb, var(--k), var(--v) 50%) 50%, var(--v) 100%);
+  box-shadow: var(--ster-binnen), 0 0 0 1px var(--ster-omtrek);
+  transition: box-shadow .18s ease, filter .18s ease, transform .08s ease;
+}
+.dw-ster.dw-ster--rond { --ster-binnen: 0 0 0 0 transparent; }
+.dw-ster:hover {
+  filter: brightness(1.04) saturate(1.05);
+  box-shadow: var(--ster-binnen), 0 0 0 1px var(--ster-omtrek), 0 0 22px -2px color-mix(in srgb, var(--v) 60%, transparent);
+}
+.dw-ster:active { transform: translateY(1px); filter: brightness(.97); }
+.dw-ster:focus-visible { outline: 2px solid var(--focus); outline-offset: 3px; }
+.dw-ster:disabled, .dw-ster[aria-disabled="true"] { cursor: not-allowed; filter: saturate(.2); opacity: .5; box-shadow: 0 0 0 1px var(--ster-omtrek); transform: none; }
+.dw-ster--klein { height: 34px; padding: 0 var(--space-4); font-size: 13px; }
+.dw-ster--groot { height: 56px; padding: 0 var(--space-6); font-size: 17px; }
+.dw-ster--rond { width: 56px; height: 56px; padding: 0; font-size: 22px; font-weight: 500; }
+.dw-ster--rond.dw-ster--klein { width: 40px; height: 40px; font-size: 17px; }
+.dw-ster svg { width: 1.15em; height: 1.15em; stroke: currentColor; fill: none; stroke-width: 1.6; stroke-linecap: round; stroke-linejoin: round; }
+
+/* ── Kleurchip (inline staal) ────────────────────────────────────────────── */
+.dw-chip { display: inline-block; width: 20px; height: 20px; border-radius: 50%; vertical-align: -4px; box-shadow: 0 0 0 1px var(--ster-omtrek); }
+.dw-chip--groot { width: 32px; height: 32px; vertical-align: -9px; }
+.dw-bol { display: block; aspect-ratio: 1; border-radius: 50%; }
+
+/* ── Sterstaal: het zwarte paneel uit de bronfiguur ──────────────────────── */
+.dw-staal { margin: 0; background: var(--paneel); border-radius: var(--radius-paneel); padding: var(--space-3) var(--space-3) var(--space-4); display: grid; grid-template-columns: minmax(0, 1fr); gap: var(--space-3); color: var(--paneel-inkt); min-width: 0; }
+.dw-staal__kop { display: grid; gap: 2px; font: 500 10px/14px var(--font-mono); letter-spacing: 0.02em; color: var(--v); }
+.dw-staal__kop span { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.dw-staal__kop span + span { color: var(--paneel-gedempt); }
+.dw-staal__bol { width: 78%; aspect-ratio: 1; border-radius: 50%; justify-self: center; }
+.dw-staal__naam { font: 400 20px/24px var(--font-display); font-variation-settings: "SOFT" 100; margin: 0; }
+.dw-staal__codes { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: var(--space-2); margin: 0; font: 400 10px/14px var(--font-mono); color: var(--paneel-gedempt); }
+.dw-staal__codes div { display: grid; gap: 2px; }
+.dw-staal__codes dt { color: var(--v); }
+.dw-staal__codes dd { margin: 0; }
+.dw-staal-raster { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 6px; }
+@media (max-width: 600px) { .dw-staal-raster { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+
+/* ── Spiegelovaal ────────────────────────────────────────────────────────── */
+.dw-spiegel {
+  --maat: 240px; --lijst: 4px;
+  position: relative; isolation: isolate; overflow: hidden; box-sizing: border-box;
+  width: var(--maat); aspect-ratio: 1; border-radius: var(--radius-ovaal);
+  background: linear-gradient(100deg, var(--spiegel-licht) 0%, var(--spiegel-vlak) 48%, var(--spiegel-schaduw) 84%, var(--spiegel-diep) 100%);
+  border: var(--lijst) solid var(--spiegel-rand);
+  box-shadow: 0 0 0 1px var(--spiegel-haarlijn), var(--schaduw-spiegel);
+  color: var(--op-spiegel);
+}
+/* De lichtstreep: zachte bovenkant, scherpe onderkant, versmalt en dooft uit naar rechts. */
+.dw-spiegel::before, .dw-veld__ovaal::before {
+  content: ""; position: absolute; z-index: 1; pointer-events: none;
+  left: -6%; top: 24%; width: 118%; height: 16%;
+  transform-origin: 0 50%; transform: rotate(var(--streep-hoek));
+  background: linear-gradient(180deg,
+    transparent 0%,
+    color-mix(in srgb, var(--spiegel-glans) 30%, transparent) 28%,
+    color-mix(in srgb, var(--spiegel-glans) 78%, transparent) 62%,
+    color-mix(in srgb, var(--spiegel-glans) 95%, transparent) 84%,
+    transparent 97%);
+  clip-path: polygon(0 0, 100% 24%, 100% 76%, 0 100%);
+  -webkit-mask-image: linear-gradient(90deg, #000 0%, #000 18%, rgba(0,0,0,.55) 58%, transparent 90%);
+          mask-image: linear-gradient(90deg, #000 0%, #000 18%, rgba(0,0,0,.55) 58%, transparent 90%);
+}
+.dw-spiegel--liggend { aspect-ratio: 16 / 10; }
+.dw-spiegel--staand { aspect-ratio: 4 / 5; }
+.dw-spiegel--breed { aspect-ratio: 3 / 1; --lijst: 3px; }
+.dw-spiegel--breed::before { left: 2%; top: -6%; width: 60%; height: 34%; }
+.dw-spiegel--kantel { transform: rotate(var(--spiegel-kanteling)); }
+.dw-spiegel--groot { --lijst: 6px; }
+.dw-spiegel__inhoud { position: relative; z-index: 2; height: 100%; box-sizing: border-box; display: grid; place-content: center; text-align: center; padding: 14%; }
+.dw-spiegel > img, .dw-spiegel > picture > img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; z-index: 0; }
+.dw-spiegel--beeld::after { content: ""; position: absolute; inset: 0; z-index: 0; background: linear-gradient(100deg, var(--spiegel-licht), var(--spiegel-schaduw)); mix-blend-mode: multiply; opacity: .55; pointer-events: none; }
+
+/* ── Spiegelveld: invoer in een ovaal ────────────────────────────────────── */
+.dw-veld { display: grid; gap: var(--space-2); font-family: var(--font-sans); color: var(--inkt); max-width: 420px; }
+.dw-veld__label { font: 500 12px/16px var(--font-mono); letter-spacing: .08em; text-transform: uppercase; color: var(--inkt-gedempt); padding-left: 12%; }
+.dw-veld__ovaal {
+  position: relative; isolation: isolate; overflow: hidden; display: block;
+  height: 58px; border-radius: var(--radius-ovaal);
+  background: linear-gradient(100deg, var(--spiegel-licht) 0%, var(--spiegel-vlak) 62%, color-mix(in srgb, var(--spiegel-vlak), var(--spiegel-schaduw) 35%) 100%);
+  border: 2px solid var(--spiegel-rand);
+  box-shadow: 0 0 0 1px var(--spiegel-haarlijn);
+}
+.dw-veld__ovaal::before { left: 3%; top: -8%; width: 30%; height: 46%; opacity: .75; transition: opacity .2s ease; }
+.dw-veld__invoer {
+  position: relative; z-index: 2; box-sizing: border-box; width: 100%; height: 100%;
+  border: 0; outline: 0; background: transparent; padding: 0 13%;
+  font: 400 16px/24px var(--font-sans); color: var(--op-spiegel);
+}
+.dw-veld__invoer::placeholder { color: var(--op-spiegel-gedempt); opacity: 1; }
+.dw-veld__ovaal:focus-within { outline: 2px solid var(--focus); outline-offset: 3px; }
+.dw-veld__ovaal:focus-within::before { opacity: 1; }
+.dw-veld__hulp { font-size: 13px; line-height: 18px; color: var(--inkt-gedempt); padding-left: 12%; }
+
+/* ── Glasbalk: meter in de schakeringen van het glas ─────────────────────── */
+.dw-glasbalk { display: grid; gap: var(--space-2); font-family: var(--font-sans); }
+.dw-glasbalk__kop { display: flex; justify-content: space-between; align-items: baseline; gap: var(--space-3); font-size: 14px; line-height: 20px; color: var(--inkt); }
+.dw-glasbalk__waarde { font: 400 14px/20px var(--font-mono); font-variant-numeric: tabular-nums; color: var(--accent); }
+.dw-glasbalk__spoor { position: relative; height: 14px; border-radius: var(--radius-rond); background: var(--grond-verhoogd); box-shadow: inset 0 0 0 1px var(--lijn); overflow: hidden; }
+.dw-glasbalk__vulling {
+  position: absolute; inset: 0; clip-path: inset(0 calc(100% - var(--waarde, 50%)) 0 0 round var(--radius-rond));
+  box-shadow: inset 0 2px 0 -1px color-mix(in srgb, var(--glas-glans) 55%, transparent);
+}
+/* een glasvulling (zie Glas, hieronder) met het verloop van wijnrood links naar oranje rechts als grond */
+.dw-glasbalk .dw-glasbalk__vulling {
+  --g-basis: linear-gradient(90deg, var(--glas-900) 0%, var(--glas-700) 22%, var(--glas-600) 48%, var(--glas-500) 72%, var(--glas-400) 90%, var(--glas-300) 100%);
+  --g-glinster: var(--glas-glans); --g-vonk: var(--glas-300); --g-glinster-kracht: 65%; --g-vonk-kracht: 70%;
+}
+.dw-glasbalk--geribd .dw-glasbalk__vulling { --g-rib-kracht: 34%; }
+.dw-glasbalk__hulp { font-size: 13px; line-height: 18px; color: var(--inkt-gedempt); }
+
+/* ── Glas: nooit egaal ───────────────────────────────────────────────────── */
+/* Elk vlak in een glastint flonkert: een grond die door de schakeringen loopt, donkere holtes,
+   twee lagen ribbels met een verschillende steek, langgerekte glinsteringen en kleine vonken van een andere tint.
+   De varianten wisselen alleen de tinten (--g-*); de opbouw blijft dezelfde. */
+.dw-glas, .dw-glasbalk__vulling {
+  --g-diep: var(--glas-950); --g-donker: var(--glas-900); --g-vlak: var(--glas-700); --g-licht: var(--glas-600);
+  --g-glinster: var(--glas-500); --g-vonk: var(--glas-400);
+  --g-glinster-kracht: 50%; --g-vonk-kracht: 35%; --g-holte-kracht: 70%; --g-rib-kracht: 13%;
+  --g-basis: linear-gradient(112deg, var(--g-donker) 0%, var(--g-licht) 26%, var(--g-vlak) 48%, var(--g-licht) 70%, var(--g-vlak) 86%, var(--g-donker) 100%);
+  background-color: var(--g-vlak);
+  background-image:
+    radial-gradient(4% 38% at 11% 34%, color-mix(in srgb, var(--g-glinster) var(--g-glinster-kracht), transparent), transparent),
+    radial-gradient(2.5% 28% at 29% 74%, color-mix(in srgb, var(--g-glinster) var(--g-glinster-kracht), transparent), transparent),
+    radial-gradient(5% 46% at 52% 20%, color-mix(in srgb, var(--g-glinster) var(--g-glinster-kracht), transparent), transparent),
+    radial-gradient(2% 24% at 71% 62%, color-mix(in srgb, var(--g-glinster) var(--g-glinster-kracht), transparent), transparent),
+    radial-gradient(3.5% 34% at 90% 30%, color-mix(in srgb, var(--g-glinster) var(--g-glinster-kracht), transparent), transparent),
+    radial-gradient(1.2% 9% at 21% 22%, color-mix(in srgb, var(--g-vonk) var(--g-vonk-kracht), transparent), transparent),
+    radial-gradient(0.9% 7% at 64% 84%, color-mix(in srgb, var(--g-vonk) var(--g-vonk-kracht), transparent), transparent),
+    radial-gradient(1.4% 11% at 82% 12%, color-mix(in srgb, var(--g-vonk) var(--g-vonk-kracht), transparent), transparent),
+    radial-gradient(32% 70% at 24% 108%, color-mix(in srgb, var(--g-diep) var(--g-holte-kracht), transparent), transparent 70%),
+    radial-gradient(26% 60% at 78% -8%, color-mix(in srgb, var(--g-diep) var(--g-holte-kracht), transparent), transparent 70%),
+    repeating-linear-gradient(90deg, color-mix(in srgb, var(--g-glinster) var(--g-rib-kracht), transparent) 0 1px, transparent 1px 9px),
+    repeating-linear-gradient(90deg, transparent 0 4px, color-mix(in srgb, var(--g-diep) var(--g-rib-kracht), transparent) 4px 6px, transparent 6px 13px),
+    repeating-linear-gradient(90deg, transparent 0 15px, color-mix(in srgb, var(--g-licht) calc(var(--g-rib-kracht) * 2), transparent) 15px 18px, transparent 18px 23px),
+    var(--g-basis);
+}
+.dw-glas { color: var(--op-glas); }
+/* Zacht: de glasgrond voor meldingen en badges. Volgt het thema: diep wijnrood in Nacht, perzik-roze in Nevel. */
+.dw-glas--zacht {
+  --g-diep: var(--glasvlak-diep); --g-donker: var(--glasvlak-diep); --g-vlak: var(--glasvlak-vlak); --g-licht: var(--glasvlak-licht);
+  --g-glinster: var(--glasvlak-glinster); --g-vonk: var(--glasvlak-vonk);
+  --g-glinster-kracht: 55%; --g-vonk-kracht: 30%; --g-holte-kracht: 45%; --g-rib-kracht: 18%;
+  color: var(--accent-zacht-tekst);
+}
+/* Vuur: de volle flonkering, tot het amberen glanspunt. Alleen decoratief, nooit onder tekst. */
+.dw-glas--vuur {
+  --g-diep: var(--glas-950); --g-donker: var(--glas-800); --g-vlak: var(--glas-600); --g-licht: var(--glas-400);
+  --g-glinster: var(--glas-glans); --g-vonk: var(--glas-300);
+  --g-glinster-kracht: 75%; --g-vonk-kracht: 80%; --g-holte-kracht: 80%; --g-rib-kracht: 22%;
+}
+.dw-glas--geribd { --g-rib-kracht: 34%; }
+/* Hulpstukken op glas */
+.dw-melding { display: grid; grid-template-columns: auto 1fr; gap: var(--space-1) var(--space-3); align-items: start; padding: var(--space-4) var(--space-5); border-radius: var(--radius-kaart); font-size: 14px; line-height: 20px; }
+.dw-melding svg { width: 20px; height: 20px; stroke: currentColor; fill: none; stroke-width: 1.6; stroke-linecap: round; stroke-linejoin: round; grid-row: span 2; margin-top: 1px; }
+.dw-melding strong { font-weight: 600; }
+.dw-melding p { margin: 0; }
+.dw-badge { display: inline-flex; align-items: center; height: 24px; padding: 0 10px; border-radius: var(--radius-rond); font: 500 11px/1 var(--font-mono); letter-spacing: .06em; text-transform: uppercase; }
+
+/* ── Achtergronden: nevel en schijvenveld ────────────────────────────────── */
+.dw-nevel {
+  background:
+    radial-gradient(130% 95% at 92% -8%, var(--nevel-hoog) 0%, color-mix(in srgb, var(--nevel-hoog) 55%, transparent) 32%, transparent 66%),
+    linear-gradient(168deg, var(--nevel-midden) 0%, var(--nevel-laag) 72%) var(--nevel-laag);
+  color: var(--inkt);
+}
+/* Schijvenveld: twee verschoven roosters (hexagonaal), een gleuf per schijf, en drie volle schijven die het ritme breken.
+   --s schaalt alles; standaard 1 (steek 36px), 'fijn' 0.5 voor vullingen van kleine vlakken. */
+.dw-schijven {
+  --s: 1;
+  --tw: calc(36px * var(--s)); --th: calc(62px * var(--s));
+  --cx: calc(18px * var(--s)); --cy: calc(16px * var(--s));
+  --disc: radial-gradient(circle at var(--cx) var(--cy), var(--schijf-vlak) 0 calc(12px * var(--s)), var(--schijf-ring) calc(12.5px * var(--s)) calc(14.5px * var(--s)), transparent calc(15.5px * var(--s)));
+  --gleuf: radial-gradient(calc(6px * var(--s)) calc(1.6px * var(--s)) at var(--cx) var(--cy), var(--schijf-gleuf) 70%, transparent 100%);
+  --vol: radial-gradient(circle at var(--cx) var(--cy), var(--schijf-donker) 0 calc(12.5px * var(--s)), var(--schijf-ring) calc(13px * var(--s)) calc(14.5px * var(--s)), transparent calc(15.5px * var(--s)));
+  background-color: var(--schijf-grond);
+  background-image: var(--vol), var(--vol), var(--vol), var(--gleuf), var(--gleuf), var(--disc), var(--disc);
+  background-size:
+    calc(var(--tw) * 5) calc(var(--th) * 3),
+    calc(var(--tw) * 5) calc(var(--th) * 3),
+    calc(var(--tw) * 7) calc(var(--th) * 4),
+    var(--tw) var(--th), var(--tw) var(--th), var(--tw) var(--th), var(--tw) var(--th);
+  background-position:
+    calc(var(--tw) * 2) var(--th),
+    calc(var(--tw) * 3 + var(--cx)) calc(var(--th) * 2 + var(--th) / 2),
+    calc(var(--tw) * 5) calc(var(--th) * 2),
+    0 0, var(--cx) calc(var(--th) / 2),
+    0 0, var(--cx) calc(var(--th) / 2);
+}
+.dw-schijven--fijn { --s: .5; }
+/* Nevelsluier over een schijvenveld of foto: licht rechtsboven, donker linksonder waar tekst staat. */
+.dw-sluier { position: relative; isolation: isolate; }
+.dw-sluier::before {
+  content: ""; position: absolute; inset: 0; z-index: 0; pointer-events: none;
+  background:
+    radial-gradient(120% 90% at 95% -10%, color-mix(in srgb, var(--nevel-hoog) 92%, transparent) 0%, color-mix(in srgb, var(--nevel-hoog) 55%, transparent) 28%, transparent 60%),
+    linear-gradient(15deg, color-mix(in srgb, var(--nevel-laag) 85%, transparent) 0%, color-mix(in srgb, var(--nevel-laag) 30%, transparent) 45%, transparent 70%);
+}
+.dw-sluier > * { position: relative; z-index: 1; }

@@ -5,6 +5,9 @@ volgens de nota `Systeemuitbreidingen/boodschapmaker.md` in de repo *Notes*.
 
 Openen: `index.html` in een browser (geen server of build nodig).
 
+De opmaak volgt het design system Dwergster: `dwergster.css` bevat de tokens (Nacht als hoofdthema,
+Nevel als licht thema) en de componentstijlen uit dat systeem. De lettertypes komen van Google Fonts.
+
 ## Wat de app doet
 
 - Vaste opbouw: dag, programma (A dringend werk van gisteren, B vergaderingen met verslag, C vertalingen),
