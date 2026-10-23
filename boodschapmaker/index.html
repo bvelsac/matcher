@@ -1,0 +1,124 @@
+<!doctype html>
+<html lang="nl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Boodschapmaker</title>
+<style>
+  :root {
+    --bg: #f5f6f8; --card: #fff; --text: #1d2330; --muted: #667085; --line: #d9dde5;
+    --accent: #2457c5; --accent-soft: #e8eefb; --ok: #1f7a3d; --ok-soft: #e6f4ea;
+    --err: #b42318; --err-soft: #fdecea; --warn: #9a6700; --warn-soft: #fff4d6;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --bg: #14171d; --card: #1d2129; --text: #e6e8ec; --muted: #9aa3b2; --line: #343a46;
+      --accent: #7aa2ff; --accent-soft: #232d44; --ok: #6fcf8e; --ok-soft: #1c3326;
+      --err: #ff8a80; --err-soft: #3a1f1f; --warn: #f0c45a; --warn-soft: #3a3020;
+    }
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--bg); color: var(--text);
+         font: 15px/1.45 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; }
+  header { padding: 16px; border-bottom: 1px solid var(--line); background: var(--card);
+           display: flex; flex-wrap: wrap; gap: 12px; align-items: end; }
+  header h1 { margin: 0 16px 0 0; font-size: 20px; }
+  main { max-width: 1200px; margin: 0 auto; padding: 16px; display: grid; grid-template-columns: minmax(0, 1fr); gap: 16px; }
+  .scroll-x { overflow-x: auto; }
+  label { font-size: 13px; color: var(--muted); display: block; margin-bottom: 2px; }
+  input, select, textarea, button { font: inherit; color: inherit; }
+  input[type=text], input[type=date], input[type=time], input[type=number], input[type=datetime-local], select, textarea {
+    width: 100%; padding: 6px 8px; border: 1px solid var(--line); border-radius: 6px; background: var(--bg); }
+  textarea { resize: vertical; min-height: 64px; }
+  button { padding: 6px 12px; border-radius: 6px; border: 1px solid var(--line); background: var(--card); cursor: pointer; }
+  button.primary { background: var(--accent); border-color: var(--accent); color: #fff; }
+  button.small { padding: 2px 8px; font-size: 13px; }
+  button:disabled { opacity: .5; cursor: not-allowed; }
+  .card { background: var(--card); border: 1px solid var(--line); border-radius: 10px; padding: 14px; }
+  .card h2 { margin: 0 0 8px; font-size: 16px; display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+  .badge { font-size: 12px; padding: 1px 8px; border-radius: 99px; font-weight: 500; }
+  .badge.req { background: var(--accent-soft); color: var(--accent); }
+  .badge.ok { background: var(--ok-soft); color: var(--ok); }
+  .badge.err { background: var(--err-soft); color: var(--err); }
+  .badge.warn { background: var(--warn-soft); color: var(--warn); }
+  .hint { color: var(--muted); font-size: 13px; margin: 0 0 8px; }
+  .row { display: grid; gap: 8px; align-items: end; margin-bottom: 6px; }
+  .cols { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 10px; }
+  .col-head { font-size: 12px; font-weight: 600; color: var(--muted); text-transform: uppercase; letter-spacing: .04em;
+              display: flex; justify-content: space-between; align-items: center; }
+  .draft.edited { border-color: var(--warn); }
+  .inputs { border-left: 3px solid var(--accent-soft); padding-left: 10px; }
+  .check { display: flex; gap: 6px; align-items: flex-start; font-size: 14px; color: var(--text); margin: 4px 0; }
+  .check input { margin-top: 3px; }
+  .preview-box { border: 2px solid var(--line); border-radius: 8px; padding: 10px 12px; overflow: hidden;
+                 white-space: pre-wrap; font-size: 14px; background: var(--bg); }
+  .preview-box.overflow { border-color: var(--err); }
+  .meta { font-size: 13px; color: var(--muted); margin: 4px 0; }
+  .meta.err { color: var(--err); }
+  ul.problems { margin: 6px 0 0; padding-left: 18px; color: var(--err); font-size: 14px; }
+  table { width: 100%; border-collapse: collapse; font-size: 14px; }
+  td, th { text-align: left; padding: 6px; border-bottom: 1px solid var(--line); vertical-align: top; }
+  .flex { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
+  @media (max-width: 720px) {
+    .cols { grid-template-columns: 1fr; }
+    .row { grid-template-columns: 1fr !important; }
+  }
+</style>
+</head>
+<body>
+<header>
+  <h1>Boodschapmaker</h1>
+  <div><label for="datum">Dag van de boodschap</label><input type="date" id="datum"></div>
+  <div><label for="volgorde">Kolommen</label>
+    <select id="volgorde"><option value="nl-fr">Nederlands – Frans</option><option value="fr-nl">Français – Néerlandais</option></select></div>
+  <div class="flex">
+    <button id="nieuw">Nieuwe boodschap</button>
+    <button id="kopieer-vorige">Vertrek van vorige dag</button>
+  </div>
+</header>
+
+<main>
+  <div id="secties"></div>
+
+  <section class="card" id="voorbeeld">
+    <h2>Voorbeeld in het vak van de homepage</h2>
+    <p class="hint">De boodschap moet integraal in het vak passen. Afmetingen en maximum aantal tekens stel je hieronder in.</p>
+    <div class="flex" style="margin-bottom:10px">
+      <div><label for="vak-b">Breedte vak (px)</label><input type="number" id="vak-b" min="200" step="10" style="width:110px"></div>
+      <div><label for="vak-h">Hoogte vak (px)</label><input type="number" id="vak-h" min="100" step="10" style="width:110px"></div>
+      <div><label for="vak-max">Max. tekens</label><input type="number" id="vak-max" min="100" step="50" style="width:110px"></div>
+    </div>
+    <div class="cols" id="preview-cols"></div>
+    <ul class="problems" id="problemen"></ul>
+    <div class="flex" style="margin-top:12px">
+      <button class="primary" id="inplannen">Inplannen</button>
+      <span class="meta" id="plan-status"></span>
+    </div>
+  </section>
+
+  <section class="card">
+    <h2>Ingeplande boodschappen</h2>
+    <p class="hint">Opgeslagen in deze browser. Een boodschap wordt getoond vanaf 07:00 op haar dag.</p>
+    <div class="scroll-x"><table><thead><tr><th>Dag</th><th>Coördinatie</th><th>Opgeslagen</th><th></th></tr></thead><tbody id="planning"></tbody></table></div>
+    <div class="flex" style="margin-top:10px">
+      <button id="export">Exporteren (JSON)</button>
+      <label class="flex" style="margin:0"><button id="import-knop" type="button">Importeren</button>
+        <input type="file" id="import" accept="application/json" hidden></label>
+    </div>
+  </section>
+
+  <section class="card">
+    <h2>Simulatie homepage</h2>
+    <p class="hint">Wat ziet iemand die de homepage op dit moment opent?</p>
+    <div class="flex" style="margin-bottom:10px">
+      <div><label for="sim-moment">Moment</label><input type="datetime-local" id="sim-moment"></div>
+      <div><label for="sim-taal">Taal</label><select id="sim-taal"><option value="nl">Nederlands</option><option value="fr">Français</option></select></div>
+    </div>
+    <div class="preview-box" id="sim-vak"></div>
+  </section>
+</main>
+
+<script src="citaten.js"></script>
+<script src="app.js"></script>
+</body>
+</html>
