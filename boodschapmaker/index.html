@@ -4,6 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Boodschapmaker</title>
+<meta name="claude:viewport-fit-sides" content="cover">
 <style>
   :root {
     --bg: #f5f6f8; --card: #fff; --text: #1d2330; --muted: #667085; --line: #d9dde5;
@@ -14,16 +15,21 @@
     :root:not([data-theme="light"]) {
       --bg: #14171d; --card: #1d2129; --text: #e6e8ec; --muted: #9aa3b2; --line: #343a46;
       --accent: #7aa2ff; --accent-soft: #232d44; --ok: #6fcf8e; --ok-soft: #1c3326;
-      --err: #ff8a80; --err-soft: #3a1f1f; --warn: #f0c45a; --warn-soft: #3a3020;
+      --err: #ff8a80; --err-soft: #3a1f1f; --warn: #f0c45a; --warn-soft: #3a3020; color-scheme: dark;
     }
+  }
+  :root[data-theme="dark"] {
+    --bg: #14171d; --card: #1d2129; --text: #e6e8ec; --muted: #9aa3b2; --line: #343a46;
+    --accent: #7aa2ff; --accent-soft: #232d44; --ok: #6fcf8e; --ok-soft: #1c3326;
+    --err: #ff8a80; --err-soft: #3a1f1f; --warn: #f0c45a; --warn-soft: #3a3020; color-scheme: dark;
   }
   * { box-sizing: border-box; }
   body { margin: 0; background: var(--bg); color: var(--text);
          font: 15px/1.45 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; }
-  header { padding: 16px; border-bottom: 1px solid var(--line); background: var(--card);
+  header { padding-block: 16px; padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); border-bottom: 1px solid var(--line); background: var(--card);
            display: flex; flex-wrap: wrap; gap: 12px; align-items: end; }
   header h1 { margin: 0 16px 0 0; font-size: 20px; }
-  main { max-width: 1200px; margin: 0 auto; padding: 16px; display: grid; grid-template-columns: minmax(0, 1fr); gap: 16px; }
+  main { max-width: 1200px; margin: 0 auto; padding-block: 16px; padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); display: grid; grid-template-columns: minmax(0, 1fr); gap: 16px; }
   .scroll-x { overflow-x: auto; }
   label { font-size: 13px; color: var(--muted); display: block; margin-bottom: 2px; }
   input, select, textarea, button { font: inherit; color: inherit; }
@@ -33,6 +39,8 @@
   button { padding: 6px 12px; border-radius: 6px; border: 1px solid var(--line); background: var(--card); cursor: pointer; }
   button.primary { background: var(--accent); border-color: var(--accent); color: #fff; }
   button.small { padding: 2px 8px; font-size: 13px; }
+  button.bevestig { border-color: var(--err); color: var(--err); }
+  button:focus-visible, input:focus-visible, select:focus-visible, textarea:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
   button:disabled { opacity: .5; cursor: not-allowed; }
   .card { background: var(--card); border: 1px solid var(--line); border-radius: 10px; padding: 14px; }
   .card h2 { margin: 0 0 8px; font-size: 16px; display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
@@ -75,6 +83,7 @@
     <button id="nieuw">Nieuwe boodschap</button>
     <button id="kopieer-vorige">Vertrek van vorige dag</button>
   </div>
+  <p class="meta" id="melding" role="status" style="flex-basis:100%;margin:0"></p>
 </header>
 
 <main>
@@ -105,6 +114,7 @@
       <label class="flex" style="margin:0"><button id="import-knop" type="button">Importeren</button>
         <input type="file" id="import" accept="application/json" hidden></label>
     </div>
+    <textarea id="export-json" rows="8" readonly hidden style="margin-top:10px;font-family:ui-monospace,monospace;font-size:12px"></textarea>
   </section>
 
   <section class="card">

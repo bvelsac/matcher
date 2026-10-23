@@ -128,7 +128,23 @@ function nieuweToestand(datum = morgen()) {
   };
 }
 
-let state = lezen(OPSLAG_CONCEPT, null) || nieuweToestand();
+// Ingevuld voorbeeld voor wie de app voor het eerst opent.
+function voorbeeldToestand() {
+  const t = nieuweToestand();
+  t.a.items = [{ nl: 'Verslag van de plenaire vergadering van gisteren nalezen', fr: 'Relire le compte rendu de la séance plénière d\u2019hier' }];
+  t.b.vergaderingen = [
+    { uur: '09:30', nl: 'Commissie Financiën', fr: 'Commission des Finances', wie: 'Jan', prio: true },
+    { uur: '14:00', nl: 'Commissie Leefmilieu', fr: 'Commission de l\u2019Environnement', wie: 'Amina', prio: false },
+  ];
+  t.c.items = [{ nl: 'Ordonnantie over huisvesting', fr: 'Ordonnance relative au logement', wie: 'Pieter' }];
+  t.werklast = 'zwaar';
+  t.coordinator = 'Sara';
+  t.deadlines = [{ nl: 'Hoorzitting over mobiliteit: verslag klaar', fr: 'Audition sur la mobilité : rapport prêt', datum: '', wie: 'Lotte' }];
+  return t;
+}
+
+const eersteBezoek = !lezen(OPSLAG_CONCEPT, null);
+let state = lezen(OPSLAG_CONCEPT, null) || voorbeeldToestand();
 let instellingen = Object.assign({ volgorde: 'nl-fr', breedte: 520, hoogte: 600, max: 1500 },
   lezen(OPSLAG_INSTELLINGEN, {}));
 if (state.citaat == null) state.citaat = willekeurigCitaat();
@@ -550,12 +566,29 @@ function planningTekenen() {
       el('td', {}, new Date(p[d].opgeslagen).toLocaleString('nl-BE')),
       el('td', { class: 'flex' },
         el('button', { class: 'small', type: 'button', onclick: () => laden(p[d].toestand) }, 'Openen'),
-        el('button', { class: 'small', type: 'button', onclick: () => {
-          if (!confirm(`Boodschap voor ${datumTekst(d, 'nl')} verwijderen?`)) return;
+        el('button', { class: 'small', type: 'button', onclick: e => tweeStappen(e.currentTarget, 'Zeker verwijderen?', () => {
           const q = planning(); delete q[d]; schrijven(OPSLAG_PLANNING, q); planningTekenen(); simuleren();
-        } }, 'Verwijderen')))));
+        }) }, 'Verwijderen')))));
   }
   simuleren();
+}
+
+// Vraagt bevestiging op de knop zelf: de eerste klik verandert de tekst, de tweede voert uit.
+function tweeStappen(knop, vraag, actie) {
+  if (knop.dataset.bevestig) { delete knop.dataset.bevestig; actie(); return; }
+  const oud = knop.textContent;
+  knop.dataset.bevestig = '1';
+  knop.textContent = vraag;
+  knop.classList.add('bevestig');
+  setTimeout(() => {
+    if (!knop.dataset.bevestig) return;
+    delete knop.dataset.bevestig; knop.textContent = oud; knop.classList.remove('bevestig');
+  }, 4000);
+}
+
+function melden(tekst) {
+  const m = document.getElementById('melding');
+  m.textContent = tekst;
 }
 
 function laden(toestand) {
@@ -600,26 +633,32 @@ function init() {
     });
   }
 
-  document.getElementById('nieuw').addEventListener('click', () => {
-    if (!confirm('Een nieuwe, lege boodschap beginnen? Het huidige concept gaat verloren als het niet is ingepland.')) return;
-    state = nieuweToestand(); state.citaat = willekeurigCitaat(); datum.value = state.datum; tekenen();
-  });
+  const nieuw = document.getElementById('nieuw');
+  nieuw.addEventListener('click', () => tweeStappen(nieuw, 'Concept wissen?', () => {
+    nieuw.textContent = 'Nieuwe boodschap'; nieuw.classList.remove('bevestig');
+    state = nieuweToestand(); state.citaat = willekeurigCitaat(); datum.value = state.datum; melden(''); tekenen();
+  }));
 
   // Neemt de laatst ingeplande boodschap vóór de gekozen dag over als vertrekpunt.
   document.getElementById('kopieer-vorige').addEventListener('click', () => {
     const p = planning();
     const vorige = Object.keys(p).filter(d => d < state.datum).sort().pop();
-    if (!vorige) { alert('Er is geen eerdere ingeplande boodschap.'); return; }
+    if (!vorige) { melden('Er is geen eerder ingeplande boodschap om van te vertrekken.'); return; }
+    melden(`Vertrokken van de boodschap van ${datumTekst(vorige, 'nl')}.`);
     const doel = state.datum;
     laden({ ...p[vorige].toestand, datum: doel, aangepast: {}, citaat: willekeurigCitaat() });
   });
 
   document.getElementById('inplannen').addEventListener('click', inplannen);
 
+  // Exporteren toont de planning als JSON om te kopiëren; importeren leest een JSON-bestand.
+  const exportVak = document.getElementById('export-json');
   document.getElementById('export').addEventListener('click', () => {
-    const blob = new Blob([JSON.stringify(planning(), null, 2)], { type: 'application/json' });
-    const a = el('a', { href: URL.createObjectURL(blob), download: `boodschappen-${isoDatum(new Date())}.json` });
-    a.click(); URL.revokeObjectURL(a.href);
+    exportVak.hidden = false;
+    exportVak.value = JSON.stringify(planning(), null, 2);
+    exportVak.select();
+    navigator.clipboard?.writeText(exportVak.value).then(
+      () => melden('De planning is als JSON gekopieerd.'), () => melden('Kopieer de JSON uit het vak.'));
   });
   const imp = document.getElementById('import');
   document.getElementById('import-knop').addEventListener('click', () => imp.click());
@@ -629,7 +668,8 @@ function init() {
       const data = JSON.parse(await f.text());
       schrijven(OPSLAG_PLANNING, Object.assign(planning(), data));
       planningTekenen();
-    } catch { alert('Dit bestand kon niet gelezen worden.'); }
+      melden('Planning geïmporteerd.');
+    } catch { melden('Dit bestand kon niet gelezen worden. Kies een JSON-bestand dat met Exporteren is gemaakt.'); }
     imp.value = '';
   });
 
@@ -638,6 +678,7 @@ function init() {
   document.getElementById('sim-moment').addEventListener('input', simuleren);
   document.getElementById('sim-taal').addEventListener('change', simuleren);
 
+  if (eersteBezoek) melden('Dit is een ingevuld voorbeeld. Klik op \u201CNieuwe boodschap\u201D om met een leeg concept te beginnen.');
   tekenen();
   planningTekenen();
 }

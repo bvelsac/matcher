@@ -22,7 +22,7 @@ Openen: `index.html` in een browser (geen server of build nodig).
 
 ## Beperkingen
 
-- Ingeplande boodschappen staan in de `localStorage` van de browser. Gebruik Exporteren/Importeren om ze
+- Ingeplande boodschappen staan in de `localStorage` van de browser. Gebruik Exporteren (JSON kopiëren) en Importeren om ze
   te bewaren of over te zetten. Voor echt gebruik moet de opslag naar een server (bv. de Flask-app),
   zodat Tullio de boodschap kan ophalen.
 - Toegang "enkel voor diensthoofden" kan een statische pagina niet afdwingen; dat moet via de hosting
