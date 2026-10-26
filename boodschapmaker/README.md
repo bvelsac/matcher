@@ -10,22 +10,18 @@ Nevel als licht thema) en de componentstijlen uit dat systeem. De lettertypes ko
 
 ## Wat de app doet
 
-- Vaste opbouw: dag, programma (A dringend werk van gisteren, B vergaderingen met verslag, C vertalingen),
-  werklast, coördinator, eventuele deadlines en een slag om de arm.
-- A, B, C, werklast, coördinator en het citaat zijn verplicht. Voor A, B en C moet je expliciet aanvinken
-  dat er niets is. Bij B moet elke vergadering een verantwoordelijke hebben en moet er één prioriteit zijn.
-- Per punt twee kolommen (Nederlands–Frans of Français–Néerlandais) met een tekstvoorstel dat het systeem
-  opbouwt uit de invoer. Je kunt elk voorstel handmatig aanpassen; de app waarschuwt als je maar één taal
-  aanpast of als de invoer nadien nog wijzigt.
-- Slag om de arm: aan te vinken voorbehouden, plus altijd "Deze prioriteiten kunnen veranderen. Zoals X het
-  zei: …" met een citaat uit `citaten.js`. Auteurs van na de 19e eeuw zijn standaard verborgen.
-- Kernboodschap: drie regels van hooguit 108 tekens per taal, wat in het vak op de homepage staat.
-  Regel 1: dag, coördinatie en werklast. Regel 2: de vergaderingen, de prioritaire eerst (wat niet past,
-  wordt geteld als "+n andere"). Regel 3: achterstand van gisteren, vertalingen, deadlines en altijd een
-  korte slag om de arm. Per regel komen eerst zoveel mogelijk onderdelen erin in hun kortste vorm, daarna
-  worden ze verlengd waar er plaats is. Je kunt de regels aanpassen. De volledige boodschap staat eronder,
-  ingeklapt onder "Meer info".
-- Inplannen kan pas als alles in orde is en de kernboodschap in beide talen uit hooguit drie regels van 108 tekens bestaat.
+- Kernboodschap: wat in het vak op de homepage staat, drie regels van ongeveer 108 tekens per taal. Ze
+  bevat alleen het essentiële, in deze volgorde:
+  1. de harde prioriteiten: eerst het werk van de vorige dag (verplicht: invullen of aanvinken dat er
+     niets is), dan eventueel een commissie met voorrang en eventueel een indeling in twee teams;
+  2. eventueel de vertalingen, als er plaats is;
+  3. altijd een echt of verzonnen citaat als slag om de arm, liefst op een eigen regel.
+  De dagagenda staat er niet in: die heeft iedereen al. Het systeem kiest per onderdeel de langste
+  formulering die past; je kunt de tekst aanpassen. Citaten die niet passen, zijn gemarkeerd, en
+  "Ander citaat kiezen" kiest alleen uit citaten die passen.
+- Meer info (optioneel, inklapbaar onder de kernboodschap): vertalingen, voorbehouden, werklast,
+  coördinator en deadlines.
+- Inplannen kan pas als alles in orde is en de kernboodschap in beide talen in drie regels past.
 - Inplannen per datum, met een simulatie van wat de homepage toont (vanaf 07:00 op de dag zelf).
 
 ## Beperkingen

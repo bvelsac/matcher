@@ -3,6 +3,7 @@
 // ---------- Vaste lijsten ----------
 
 const WERKLAST = {
+  geen: { label: 'Niet vermelden', nl: '', fr: '' },
   licht: {
     label: 'Rustig',
     nl: 'Werklast: een rustige dag. We verwachten op een normaal uur te eindigen.',
@@ -25,30 +26,10 @@ const WERKLAST = {
   },
 };
 
-// Werklast in de kernboodschap, van lang naar kort.
-const WERKLAST_KORT = {
-  licht: { nl: ['Rustige dag: we eindigen op een normaal uur', 'Rustige dag'],
-           fr: ['Journée calme\u00A0: fin à l\u2019heure habituelle', 'Journée calme'] },
-  normaal: { nl: ['Normale werklast: we eindigen op een normaal uur', 'Normale dag'],
-             fr: ['Charge normale\u00A0: fin à l\u2019heure habituelle', 'Journée normale'] },
-  zwaar: { nl: ['Zware dag: het kan later worden dan gewoonlijk', 'Zware dag'],
-           fr: ['Journée chargée\u00A0: nous finirons peut-être plus tard', 'Journée chargée'] },
-  zeerzwaar: { nl: ['Zeer zware dag met te weinig mensen: elke hulp is welkom', 'Zeer zware dag'],
-               fr: ['Journée très chargée, en sous-effectif\u00A0: toute aide est bienvenue', 'Journée très chargée'] },
-};
-
-// De kernboodschap is wat in het vak op de homepage staat: KERN_REGELS regels van hooguit
-// KERN_MAX tekens. De rest komt onder "Meer info".
+// De kernboodschap is wat in het vak op de homepage staat: KERN_REGELS regels van ongeveer
+// KERN_MAX tekens. De tekst loopt door over de regels; een nieuwe regel begint ook bij een regeleinde.
 const KERN_MAX = 108;
 const KERN_REGELS = 3;
-
-// Korte slag om de arm die altijd in de kernboodschap staat.
-const KORT_VOORBEHOUD = {
-  voorbehoud: { nl: 'Onder voorbehoud.', fr: 'Sous réserve.' },
-  inchallah: { nl: 'Inch\u2019Allah.', fr: 'Inch\u2019Allah.' },
-  quesera: { nl: 'Que sera, sera.', fr: 'Que sera, sera.' },
-  quivivra: { nl: 'Wie leeft, die ziet.', fr: 'Qui vivra verra.' },
-};
 
 const SLAGEN = [
   { id: 'agenda', nl: 'Alles onder voorbehoud van wijzigingen in de agenda.',
@@ -157,9 +138,12 @@ function chip(kleur) { return el('i', { class: `dw-chip dw-${kleur}`, 'aria-hidd
 const leeg = s => !s || !s.trim();
 const fr = item => (item.fr && item.fr.trim()) || '';
 const toegelaten = c => state.moderneAuteurs || !MODERN.has(c.auteur);
+// Kiest een willekeurig citaat, bij voorkeur een dat in de kernboodschap past.
 function willekeurigCitaat() {
   const pool = CITATEN.filter(toegelaten);
-  return pool.length ? pool[Math.floor(Math.random() * pool.length)].id : null;
+  const passend = pool.filter(c => citaatPast(c.id));
+  const uit = passend.length ? passend : pool;
+  return uit.length ? uit[Math.floor(Math.random() * uit.length)].id : null;
 }
 
 // ---------- Toestand ----------
@@ -168,15 +152,16 @@ function nieuweToestand(datum = morgen()) {
   return {
     datum,
     a: { geen: false, items: [{ nl: '', fr: '' }] },
-    b: { geen: false, vergaderingen: [{ uur: '', nl: '', fr: '', wie: '', prio: false }], noot: { nl: '', fr: '' } },
-    c: { geen: false, items: [{ nl: '', fr: '', wie: '' }] },
-    werklast: 'normaal', werklastNoot: { nl: '', fr: '' },
+    b: { prio: { nl: '', fr: '', wie: '' }, teams: false,
+         team1: { wie: '', nl: '', fr: '' }, team2: { wie: '', nl: '', fr: '' } },
+    c: { items: [] },
+    werklast: 'geen', werklastNoot: { nl: '', fr: '' },
     coordinator: '',
     deadlines: [],
-    slagen: ['agenda', 'vergaderingen'],
+    slagen: [],
     citaat: null,
     moderneAuteurs: false,
-    kortVoorbehoud: 'voorbehoud',
+    meerInfo: true,
     aangepast: {}, // sectie -> { nl: {tekst, basis}, fr: {tekst, basis} }
   };
 }
@@ -185,10 +170,7 @@ function nieuweToestand(datum = morgen()) {
 function voorbeeldToestand() {
   const t = nieuweToestand();
   t.a.items = [{ nl: 'Verslag van de plenaire vergadering van gisteren nalezen', fr: 'Relire le compte rendu de la séance plénière d\u2019hier' }];
-  t.b.vergaderingen = [
-    { uur: '09:30', nl: 'Commissie Financiën', fr: 'Commission des Finances', wie: 'Jan', prio: true },
-    { uur: '14:00', nl: 'Commissie Leefmilieu', fr: 'Commission de l\u2019Environnement', wie: 'Amina', prio: false },
-  ];
+  t.b.prio = { nl: 'Commissie Financiën', fr: 'Commission des Finances', wie: 'Jan' };
   t.c.items = [{ nl: 'Ordonnantie over huisvesting', fr: 'Ordonnance relative au logement', wie: 'Pieter' }];
   t.werklast = 'zwaar';
   t.coordinator = 'Sara';
@@ -197,7 +179,16 @@ function voorbeeldToestand() {
 }
 
 const eersteBezoek = !lezen(OPSLAG_CONCEPT, null);
-let state = lezen(OPSLAG_CONCEPT, null) || voorbeeldToestand();
+let state = normaliseer(lezen(OPSLAG_CONCEPT, null) || voorbeeldToestand());
+
+// Vult ontbrekende velden aan en zet concepten uit een vroegere opzet (met de dagagenda) om.
+function normaliseer(t) {
+  t = Object.assign(nieuweToestand(), t);
+  if (!t.b || !('prio' in t.b)) t.b = nieuweToestand().b;
+  if (!Array.isArray(t.c.items)) t.c = { items: [] };
+  for (const k of ['dag', 'kern']) delete t.aangepast[k];
+  return t;
+}
 let instellingen = Object.assign({ volgorde: 'nl-fr' }, lezen(OPSLAG_INSTELLINGEN, {}));
 if (state.citaat == null) state.citaat = willekeurigCitaat();
 
@@ -205,88 +196,77 @@ if (state.citaat == null) state.citaat = willekeurigCitaat();
 
 const SECTIES = [
   {
-    key: 'dag', titel: '1. Dag', verplicht: true,
-    hint: 'Op welke dag heeft de boodschap betrekking? Kies de datum bovenaan.',
-    invoer: () => null,
-    tekst: () => ({
-      nl: `Boodschap voor ${datumTekst(state.datum, 'nl')}`,
-      fr: `Message pour le ${datumTekst(state.datum, 'fr')}`,
-    }),
-    controle: () => state.datum ? [] : ['Kies een datum.'],
-  },
-  {
-    key: 'a', titel: '2A. Dringend werk van gisteren', verplicht: true,
-    hint: 'Werk dat dringend moet worden afgemaakt van de vorige dag. Vink expliciet aan als er niets is.',
+    key: 'a', titel: '1. Werk van gisteren', verplicht: true,
+    hint: 'De eerste harde prioriteit: wat moet eerst worden afgewerkt van de vorige dag? Vink expliciet aan als er niets is.',
     invoer: () => lijstInvoer(state.a, [
       { veld: 'nl', label: 'Omschrijving (NL)' }, { veld: 'fr', label: 'Description (FR)' },
-    ], { nl: '', fr: '' }, 'Niets dringends van gisteren'),
-    tekst: () => {
-      if (state.a.geen) return { nl: 'A. Geen dringend werk van gisteren.', fr: 'A. Pas de travail urgent en suspens depuis hier.' };
-      const it = state.a.items.filter(i => !leeg(i.nl) || !leeg(i.fr));
-      return {
-        nl: 'A. Dringend af te werken van gisteren:\n' + it.map(i => `• ${i.nl}`).join('\n'),
-        fr: 'A. À terminer d’urgence (travail d’hier) :\n' + it.map(i => `• ${fr(i)}`).join('\n'),
-      };
-    },
-    controle: () => lijstControle(state.a, 'A', ['nl', 'fr']),
+    ], { nl: '', fr: '' }, 'Niets van gisteren'),
+    controle: () => lijstControle(state.a, 'Werk van gisteren', ['nl', 'fr']),
   },
   {
-    key: 'b', titel: '2B. Werk van de dag: vergaderingen met verslag', verplicht: true,
-    hint: 'Welke vergaderingen zijn er, welke heeft prioriteit en wie werkt op elke vergadering?',
-    invoer: vergaderingInvoer,
-    tekst: () => {
-      if (state.b.geen) {
-        return {
-          nl: 'B. Vandaag geen vergaderingen waarvoor verslag nodig is.' + noot(state.b.noot.nl),
-          fr: 'B. Aujourd’hui, aucune réunion nécessitant un compte rendu.' + noot(state.b.noot.fr),
-        };
-      }
-      const vg = state.b.vergaderingen.filter(v => !leeg(v.nl) || !leeg(v.fr));
-      const regel = (v, taal) => {
-        const uur = v.uur ? uurTekst(v.uur, taal) + ' ' : '';
-        const naam = taal === 'nl' ? v.nl : fr(v);
-        const wie = v.wie ? ` (${v.wie})` : '';
-        const prio = v.prio ? (taal === 'nl' ? ' – PRIORITEIT' : ' – PRIORITAIRE') : '';
-        return `• ${uur}${naam}${wie}${prio}`;
-      };
-      return {
-        nl: 'B. Vergaderingen van vandaag (verslag):\n' + vg.map(v => regel(v, 'nl')).join('\n') + noot(state.b.noot.nl),
-        fr: 'B. Réunions du jour (compte rendu) :\n' + vg.map(v => regel(v, 'fr')).join('\n') + noot(state.b.noot.fr),
-      };
-    },
-    controle: () => {
-      const p = [];
-      if (state.b.geen) return noot2(state.b.noot, 'B (opmerking)');
-      const vg = state.b.vergaderingen.filter(v => !leeg(v.nl) || !leeg(v.fr));
-      if (!vg.length) p.push('B: voeg minstens één vergadering toe, of vink aan dat er geen zijn.');
-      vg.forEach((v, i) => {
-        if (leeg(v.nl)) p.push(`B: vergadering ${i + 1} heeft geen Nederlandse naam.`);
-        if (leeg(v.fr)) p.push(`B: vergadering ${i + 1} heeft geen Franse naam.`);
-        if (leeg(v.wie)) p.push(`B: wie werkt op vergadering ${i + 1}?`);
-      });
-      if (vg.length && !vg.some(v => v.prio)) p.push('B: duid aan welke vergadering prioriteit heeft.');
-      return p.concat(noot2(state.b.noot, 'B (opmerking)'));
-    },
+    key: 'b', titel: '2. Prioriteit van vandaag', verplicht: false,
+    hint: 'Eventueel een commissie die vandaag voorrang krijgt, en eventueel een indeling in twee teams. De agenda zelf hoort hier niet: die heeft iedereen al.',
+    invoer: prioriteitInvoer,
+    controle: () => [
+      ...tweetaligControle(state.b.prio, 'Prioriteit'),
+      ...(state.b.teams ? [state.b.team1, state.b.team2].flatMap((t, i) => [
+        ...(leeg(t.wie) ? [`Team ${i + 1}: wie zit erin?`] : []),
+        ...tweetaligControle(t, `Team ${i + 1}`),
+      ]) : []),
+    ],
   },
   {
-    key: 'c', titel: '2C. Vertalingen', verplicht: true,
-    hint: 'Welke vertalingen staan op het programma, en wie neemt ze op? Vink expliciet aan als er geen zijn.',
+    key: 'c', titel: '3. Vertalingen', verplicht: false, inDetails: true,
+    hint: 'Optioneel. Komt in de kernboodschap als er plaats is, en altijd volledig onder “Meer info”.',
     invoer: () => lijstInvoer(state.c, [
       { veld: 'nl', label: 'Vertaling (NL)' }, { veld: 'fr', label: 'Traduction (FR)' }, { veld: 'wie', label: 'Wie' },
-    ], { nl: '', fr: '', wie: '' }, 'Geen vertalingen gepland'),
+    ], { nl: '', fr: '', wie: '' }, null),
     tekst: () => {
-      if (state.c.geen) return { nl: 'C. Geen vertalingen gepland.', fr: 'C. Aucune traduction prévue.' };
       const it = state.c.items.filter(i => !leeg(i.nl) || !leeg(i.fr));
+      if (!it.length) return { nl: '', fr: '' };
       const wie = i => i.wie ? ` (${i.wie})` : '';
       return {
-        nl: 'C. Vertalingen:\n' + it.map(i => `• ${i.nl}${wie(i)}`).join('\n'),
-        fr: 'C. Traductions :\n' + it.map(i => `• ${fr(i)}${wie(i)}`).join('\n'),
+        nl: 'Vertalingen:\n' + it.map(i => `• ${i.nl}${wie(i)}`).join('\n'),
+        fr: 'Traductions :\n' + it.map(i => `• ${fr(i)}${wie(i)}`).join('\n'),
       };
     },
-    controle: () => lijstControle(state.c, 'C', ['nl', 'fr']),
+    controle: () => lijstControle(state.c, 'Vertalingen', ['nl', 'fr']),
   },
   {
-    key: 'werklast', titel: '3. Inschatting van de werklast', verplicht: true,
+    key: 'slag', titel: '4. Citaat', verplicht: true, inDetails: true,
+    hint: 'Altijd een echt of verzonnen citaat als slag om de arm. Citaten die niet in de kernboodschap passen, zijn gemarkeerd. ' +
+      'De voorbehouden die je aanvinkt, komen onder “Meer info”.',
+    invoer: citaatInvoer,
+    tekst: () => {
+      const gekozen = SLAGEN.filter(s => state.slagen.includes(s.id));
+      return { nl: gekozen.map(s => s.nl).join(' '), fr: gekozen.map(s => s.fr).join(' ') };
+    },
+    controle: () => {
+      if (!CITATEN.some(x => x.id === state.citaat)) return ['Kies een citaat.'];
+      return citaatPast(state.citaat) ? [] : ['Het citaat past niet in de kernboodschap. Kies een korter citaat of kort de prioriteiten in.'];
+    },
+  },
+  {
+    key: 'kern', titel: '5. Kernboodschap', verplicht: true, kern: true,
+    hint: `Dit staat in het vak op de homepage: ${KERN_REGELS} regels van ongeveer ${KERN_MAX} tekens per taal. ` +
+      'Eerst de harde prioriteiten, dan eventueel de vertalingen, en altijd het citaat.',
+    invoer: () => el('label', { class: 'check' },
+      el('input', { type: 'checkbox', checked: state.meerInfo, onchange: e => { state.meerInfo = e.target.checked; tekenen(); } }),
+      'Meer info toevoegen onder de kernboodschap (inklapbaar)'),
+    tekst: () => ({ nl: kernVoorstel('nl'), fr: kernVoorstel('fr') }),
+    controle: () => {
+      const { uit } = sectieTekst(SECTIES.find(x => x.kern));
+      const p = [];
+      for (const t of ['nl', 'fr']) {
+        const regels = kernRegels(uit[t]);
+        if (!regels.length) p.push(`Kernboodschap (${TAALNAAM[t]}) is leeg.`);
+        if (regels.length > KERN_REGELS) p.push(`Kernboodschap (${TAALNAAM[t]}): ${regels.length} regels, hooguit ${KERN_REGELS}.`);
+      }
+      return p;
+    },
+  },
+  {
+    key: 'werklast', titel: 'Werklast', extra: true, inDetails: true,
     hint: 'Wordt het zwaar, of is er genoeg personeel om op een normaal uur te eindigen?',
     invoer: () => [
       el('div', { class: 'keuzes' }, Object.entries(WERKLAST).map(([k, w]) =>
@@ -296,25 +276,25 @@ const SECTIES = [
       tweetaligVeld(state.werklastNoot, 'Bijkomende uitleg (NL, optioneel)', 'Précision (FR, facultatif)'),
     ],
     tekst: () => ({
-      nl: WERKLAST[state.werklast].nl + noot(state.werklastNoot.nl),
-      fr: WERKLAST[state.werklast].fr + noot(state.werklastNoot.fr),
+      nl: (WERKLAST[state.werklast].nl + noot(state.werklastNoot.nl)).trim(),
+      fr: (WERKLAST[state.werklast].fr + noot(state.werklastNoot.fr)).trim(),
     }),
     controle: () => noot2(state.werklastNoot, 'Werklast (uitleg)'),
   },
   {
-    key: 'coordinator', titel: '4. Coördinator', verplicht: true,
-    hint: 'Wie coördineert vandaag? Dit wordt altijd vermeld.',
+    key: 'coordinator', titel: 'Coördinator', extra: true, inDetails: true,
+    hint: 'Wie coördineert vandaag?',
     invoer: () => el('div', { class: 'row', style: 'grid-template-columns: minmax(0, 360px)' },
       veld('Naam', { value: state.coordinator, oninput: e => { state.coordinator = e.target.value; bijwerken(); } })),
-    tekst: () => ({
+    tekst: () => leeg(state.coordinator) ? { nl: '', fr: '' } : {
       nl: `Coördinatie: ${state.coordinator.trim()}`,
-      fr: `Coordination : ${state.coordinator.trim()}`,
-    }),
-    controle: () => leeg(state.coordinator) ? ['Vul de coördinator in.'] : [],
+      fr: `Coordination : ${state.coordinator.trim()}`,
+    },
+    controle: () => [],
   },
   {
-    key: 'deadlines', titel: '5. Specifieke deadlines', verplicht: false,
-    hint: 'Eventueel deadlines voor bijzondere projecten (bv. hoorzittingen), en wie eraan werkt.',
+    key: 'deadlines', titel: 'Specifieke deadlines', extra: true, inDetails: true,
+    hint: 'Deadlines voor bijzondere projecten (bv. hoorzittingen), en wie eraan werkt.',
     invoer: deadlineInvoer,
     tekst: () => {
       const dl = state.deadlines.filter(d => !leeg(d.nl) || !leeg(d.fr));
@@ -338,134 +318,123 @@ const SECTIES = [
       return p;
     },
   },
-  {
-    key: 'slag', titel: '6. Slag om de arm', verplicht: true,
-    hint: 'We kunnen niet alles voorspellen. Vink de voorbehouden aan; het citaat is altijd verplicht.',
-    invoer: citaatInvoer,
-    tekst: () => {
-      const gekozen = SLAGEN.filter(s => state.slagen.includes(s.id));
-      const c = CITATEN.find(x => x.id === state.citaat);
-      const nl = gekozen.map(s => s.nl);
-      const frl = gekozen.map(s => s.fr);
-      if (c) {
-        nl.push(`Deze prioriteiten kunnen veranderen. Zoals ${c.auteur} het zei: “${c.nl}”`);
-        frl.push(`Ces priorités peuvent changer. Comme l’a dit ${AUTEUR_FR[c.auteur] || c.auteur} : « ${c.fr} »`);
-      }
-      return { nl: nl.join(' '), fr: frl.join(' ') };
-    },
-    controle: () => CITATEN.some(x => x.id === state.citaat) ? [] : ['Kies een citaat voor de slag om de arm.'],
-  },
-  {
-    key: 'kern', titel: '7. Kernboodschap', verplicht: true, kern: true,
-    hint: `Dit staat in het vak op de homepage: ${KERN_REGELS} regels van hooguit ${KERN_MAX} tekens per taal. ` +
-      'Regel 1: dag, coördinatie en werklast. Regel 2: de vergaderingen, de prioriteit eerst. ' +
-      'Regel 3: achterstand, vertalingen, deadlines en de slag om de arm. Wat niet past, staat onder \u201CMeer info\u201D.',
-    invoer: () => el('div', { class: 'row', style: 'grid-template-columns: minmax(0, 360px)' },
-      kortVoorbehoudVeld()),
-    tekst: () => ({ nl: kernVoorstel('nl'), fr: kernVoorstel('fr') }),
-    controle: () => {
-      const { uit } = sectieTekst(SECTIES.find(x => x.kern));
-      const p = [];
-      for (const t of ['nl', 'fr']) {
-        const regels = kernRegels(uit[t]);
-        if (!regels.length) p.push(`Kernboodschap (${TAALNAAM[t]}) is leeg.`);
-        if (regels.length > KERN_REGELS) p.push(`Kernboodschap (${TAALNAAM[t]}): ${regels.length} regels, hooguit ${KERN_REGELS}.`);
-        regels.forEach((r, i) => {
-          if (r.length > KERN_MAX) p.push(`Kernboodschap (${TAALNAAM[t]}), regel ${i + 1}: ${r.length} tekens, hooguit ${KERN_MAX}.`);
-        });
-      }
-      return p;
-    },
-  },
 ];
 
-function kernRegels(tekst) { return tekst.split('\n').map(r => r.trim()).filter(Boolean); }
-
-// Bouwt één regel uit stukken in leesvolgorde. Elk stuk heeft een belang (0 = eerst) en varianten van
-// lang naar kort. Eerst komen zoveel mogelijk stukken erin in hun kortste vorm, in volgorde van belang;
-// daarna krijgt elk stuk, weer in volgorde van belang, de langste variant die de regel binnen max houdt.
-// Geeft `telling.aantal` het aantal stukken dat in de regel staat, als telling meegegeven is.
-function bouwRegel(stukken, max = KERN_MAX, telling = {}) {
-  const gekozen = new Map();
-  const tekst = () => stukken.filter(x => gekozen.has(x)).map(x => gekozen.get(x)).join(' \u00B7 ');
-  const opBelang = stukken.filter(x => x.varianten.length).sort((a, b) => a.belang - b.belang);
-  for (const stuk of opBelang) {
-    gekozen.set(stuk, stuk.varianten[stuk.varianten.length - 1]);
-    if (tekst().length > max) gekozen.delete(stuk);
+// Breekt de tekst af zoals het vak doet: woorden lopen door tot ongeveer KERN_MAX tekens per regel;
+// een regeleinde in de tekst begint een nieuwe regel.
+function kernRegels(tekst) {
+  const regels = [];
+  for (const alinea of tekst.split('\n').map(r => r.trim()).filter(Boolean)) {
+    let regel = '';
+    // Alleen gewone spaties breken af; een harde spatie (zoals vóór een Frans dubbelpunt) niet.
+    for (const woord of alinea.split(/[ \t]+/)) {
+      if (regel && (regel + ' ' + woord).length > KERN_MAX) { regels.push(regel); regel = woord; }
+      else regel = regel ? regel + ' ' + woord : woord;
+    }
+    regels.push(regel);
   }
-  for (const stuk of opBelang.filter(x => gekozen.has(x))) {
+  return regels;
+}
+function kernPast(tekst) { return kernRegels(tekst).length <= KERN_REGELS; }
+
+// Kiest per stuk een variant (van lang naar kort) zodat het geheel past. Eerst komen de vaste stukken
+// erin in hun kortste vorm, in volgorde van belang; daarna krijgt elk vast stuk, weer in volgorde van
+// belang, de langste variant die nog past; tot slot komen de optionele stukken erbij als er plaats is.
+// samen() zet de gekozen varianten om in tekst.
+function kiesVarianten(stukken, samen, past) {
+  const gekozen = new Map();
+  const tekst = () => samen(stukken.filter(x => gekozen.has(x)).map(x => [x, gekozen.get(x)]));
+  const opBelang = stukken.filter(x => x.varianten.length).sort((a, b) => a.belang - b.belang);
+  const vast = opBelang.filter(x => !x.optioneel);
+  for (const stuk of vast) {
+    gekozen.set(stuk, stuk.varianten[stuk.varianten.length - 1]);
+    if (!past(tekst())) gekozen.delete(stuk);
+  }
+  for (const stuk of vast.filter(x => gekozen.has(x))) {
     for (const v of stuk.varianten) {
       gekozen.set(stuk, v);
-      if (tekst().length <= max) break;
+      if (past(tekst())) break;
     }
   }
-  telling.aantal = gekozen.size;
-  return tekst();
+  for (const stuk of opBelang.filter(x => x.optioneel)) {
+    for (const v of stuk.varianten) {
+      gekozen.set(stuk, v);
+      if (past(tekst())) break;
+      gekozen.delete(stuk);
+    }
+  }
+  return { tekst: tekst(), gekozen };
 }
 
-// Varianten van een naam: volledig, dan ingekort met een beletselteken.
-function namen(naam, voor = '', na = '') {
-  return [voor + naam + na, ...[60, 45].filter(n => naam.length > n).map(n => voor + naam.slice(0, n).trimEnd() + '\u2026' + na)];
+function citaatZin(c, taal) {
+  if (!c) return [];
+  return taal === 'nl'
+    ? [`Deze prioriteiten kunnen veranderen. Zoals ${c.auteur} zei: “${c.nl}”`, `Zoals ${c.auteur} zei: “${c.nl}”`]
+    : [`Ces priorités peuvent changer. Comme disait ${AUTEUR_FR[c.auteur] || c.auteur} : « ${c.fr} »`,
+       `Comme disait ${AUTEUR_FR[c.auteur] || c.auteur} : « ${c.fr} »`];
 }
 
-// Stelt de kernboodschap samen in drie regels.
-function kernVoorstel(taal) {
+// Stelt de kernboodschap samen: de harde prioriteiten (werk van gisteren, de prioritaire commissie,
+// de twee teams), dan de vertalingen als er plaats is, en het citaat, liefst op een eigen regel.
+// Geeft ook terug of het citaat erin staat.
+function kernOpbouw(taal, citaatId = state.citaat) {
   const nl = taal === 'nl';
   const tekstVan = x => (nl ? x.nl : x.fr || '').trim();
-  const dp = nl ? ': ' : '\u00A0: ';
+  const dp = nl ? ': ' : ' : ';
+  const stukken = [];
 
-  // Regel 1: dag, coördinatie, werklast.
-  const [y, m, d] = (state.datum || isoDatum(new Date())).split('-').map(Number);
-  const datum = new Date(y, m - 1, d);
-  const lang = datum.toLocaleDateString(nl ? 'nl-BE' : 'fr-BE', { weekday: 'long', day: 'numeric', month: 'long' });
-  const kort = datum.toLocaleDateString(nl ? 'nl-BE' : 'fr-BE', { weekday: 'short' }).replace('.', '') + ` ${d}/${m}`;
-  const hoofd = x => x.charAt(0).toUpperCase() + x.slice(1);
-  const coord = state.coordinator.trim();
-  const regel1 = bouwRegel([
-    { belang: 0, varianten: [hoofd(lang), hoofd(kort)] },
-    { belang: 0, varianten: coord ? [(nl ? 'Coördinatie' : 'Coordination') + dp + coord, (nl ? 'Coörd.' : 'Coord.') + dp + coord] : [] },
-    { belang: 1, varianten: WERKLAST_KORT[state.werklast][taal] },
-  ]);
-
-  // Regel 2: de vergaderingen, de prioritaire eerst.
-  let regel2;
-  if (state.b.geen) regel2 = nl ? 'Vandaag geen vergaderingen waarvoor verslag nodig is.' : 'Aujourd\u2019hui, aucune réunion nécessitant un compte rendu.';
-  else {
-    const vg = state.b.vergaderingen.filter(v => tekstVan(v));
-    const prio = vg.find(v => v.prio) || vg[0];
-    const rest = vg.filter(v => v !== prio);
-    const stuk = (v, belang, voor = '') => {
-      const uur = v.uur ? ' ' + uurTekst(v.uur, taal) : '';
-      const wie = v.wie.trim() ? ` (${v.wie.trim()})` : '';
-      return { belang, varianten: [voor + tekstVan(v) + uur + wie, ...namen(tekstVan(v), voor, wie), ...namen(tekstVan(v), voor)] };
-    };
-    const stukken = prio ? [stuk(prio, 0, nl ? 'Prio: ' : 'Priorité\u00A0: '), ...rest.map((v, i) => stuk(v, i + 1))] : [];
-    // Vergaderingen die niet passen, worden geteld.
-    const telling = {};
-    regel2 = bouwRegel(stukken, KERN_MAX - 14, telling);
-    const weg = stukken.length - telling.aantal;
-    if (weg > 0) regel2 += nl ? ` \u00B7 +${weg} andere` : ` \u00B7 +${weg} autre${weg > 1 ? 's' : ''}`;
-  }
-
-  // Regel 3: achterstand, vertalingen, deadlines, en altijd de korte slag om de arm.
-  const slag = (KORT_VOORBEHOUD[state.kortVoorbehoud] || KORT_VOORBEHOUD.voorbehoud)[taal];
-  const stukken3 = [];
   const a = state.a.geen ? [] : state.a.items.filter(i => tekstVan(i));
-  if (a.length) stukken3.push({ belang: 0, varianten: [
-    ...namen(tekstVan(a[0]), nl ? 'Eerst van gisteren: ' : 'D\u2019abord, d\u2019hier\u00A0: '),
-    nl ? 'Eerst achterstand van gisteren' : 'D\u2019abord le retard d\u2019hier'] });
-  const c = state.c.geen ? [] : state.c.items.filter(i => tekstVan(i));
-  if (c.length) {
-    const lijst = c.map(i => tekstVan(i) + (i.wie.trim() ? ` (${i.wie.trim()})` : '')).join(', ');
-    stukken3.push({ belang: 1, varianten: [(nl ? 'Vertalingen' : 'Traductions') + dp + lijst, (nl ? 'Vertalingen' : 'Traductions') + dp + c.length] });
-  }
-  const dl = state.deadlines.filter(x => tekstVan(x));
-  if (dl.length) stukken3.push({ belang: 2, varianten: namen(tekstVan(dl[0]), (nl ? 'Deadline' : 'Échéance') + dp,
-    dl[0].wie.trim() ? ` (${dl[0].wie.trim()})` : '') });
-  const regel3 = [bouwRegel(stukken3, KERN_MAX - slag.length - 3), slag].filter(Boolean).join(' \u2013 ');
+  const kopA = nl ? 'Eerst het werk van gisteren afwerken' : 'D’abord terminer le travail d’hier';
+  if (a.length) stukken.push({ belang: 0, varianten: [
+    `${kopA}${dp}${a.map(tekstVan).join('; ')}.`,
+    ...(a.length > 1 ? [`${kopA}${dp}${tekstVan(a[0])} (+${a.length - 1}).`] : []),
+    `${kopA}.`] });
 
-  return [regel1, regel2, regel3].join('\n');
+  const prio = state.b.prio;
+  if (tekstVan(prio)) {
+    const wie = prio.wie.trim() ? ` (${prio.wie.trim()})` : '';
+    const kop = a.length ? (nl ? 'Daarna voorrang voor ' : 'Ensuite, priorité : ') : (nl ? 'Vandaag voorrang voor ' : 'Aujourd’hui, priorité : ');
+    stukken.push({ belang: 1, varianten: [`${kop}${tekstVan(prio)}${wie}.`, `${kop}${tekstVan(prio)}.`] });
+  }
+
+  if (state.b.teams) {
+    const [t1, t2] = [state.b.team1, state.b.team2];
+    const taak = t => tekstVan(t) ? ` (${tekstVan(t)})` : '';
+    stukken.push({ belang: 2, varianten: nl
+      ? [`Twee teams: ${t1.wie.trim()}${taak(t1)} en ${t2.wie.trim()}${taak(t2)}.`, `Team 1: ${t1.wie.trim()}; team 2: ${t2.wie.trim()}.`]
+      : [`Deux équipes : ${t1.wie.trim()}${taak(t1)} et ${t2.wie.trim()}${taak(t2)}.`, `Équipe 1 : ${t1.wie.trim()} ; équipe 2 : ${t2.wie.trim()}.`] });
+  }
+
+  const citaat = { belang: 3, varianten: citaatZin(CITATEN.find(x => x.id === citaatId), taal), citaat: true };
+  stukken.push(citaat);
+
+  const c = state.c.items.filter(i => tekstVan(i));
+  if (c.length) {
+    const kop = nl ? 'Vertalingen' : 'Traductions';
+    stukken.push({ belang: 4, voorCitaat: true, optioneel: true, varianten: [
+      `${kop}${dp}${c.map(i => tekstVan(i) + (i.wie.trim() ? ` (${i.wie.trim()})` : '')).join(', ')}.`,
+      `${kop}${dp}${c.length}.`] });
+  }
+
+  // Leesvolgorde: prioriteiten, vertalingen, citaat. Het citaat begint liefst op een nieuwe regel.
+  const volgorde = x => x.citaat ? 2 : x.voorCitaat ? 1 : 0;
+  const maak = scheiding => delen => {
+    const g = [...delen].sort((x, y) => volgorde(x[0]) - volgorde(y[0]));
+    const voor = g.filter(([x]) => !x.citaat).map(([, v]) => v).join(' ');
+    const cit = g.find(([x]) => x.citaat);
+    return [voor, cit ? cit[1] : ''].filter(Boolean).join(scheiding);
+  };
+  // Het citaat op een eigen regel kost plaats: doe dat alleen als de prioriteiten er niet korter door worden.
+  const inhoud = r => r.gekozen.has(citaat) * 1e6 +
+    [...r.gekozen].filter(([x]) => !x.citaat && !x.optioneel).reduce((n, [, v]) => n + v.length, 0);
+  const eigenRegel = kiesVarianten(stukken, maak('\n'), kernPast);
+  const doorlopend = kiesVarianten(stukken, maak(' '), kernPast);
+  const r = inhoud(doorlopend) > inhoud(eigenRegel) ? doorlopend : eigenRegel;
+  return { tekst: r.tekst, metCitaat: r.gekozen.has(citaat) };
 }
+
+function kernVoorstel(taal) { return kernOpbouw(taal).tekst; }
+function citaatPast(id) { return ['nl', 'fr'].every(t => kernOpbouw(t, id).metCitaat); }
 
 function noot(t) { return leeg(t) ? '' : '\n' + t.trim(); }
 function noot2(n, naam) {
@@ -473,10 +442,16 @@ function noot2(n, naam) {
   if (!leeg(n.nl) && leeg(n.fr)) return [`${naam}: Franse vertaling ontbreekt.`];
   return [];
 }
+function tweetaligControle(x, naam) {
+  if (leeg(x.nl) && !leeg(x.fr)) return [`${naam}: Nederlandse tekst ontbreekt.`];
+  if (!leeg(x.nl) && leeg(x.fr)) return [`${naam}: Franse vertaling ontbreekt.`];
+  return [];
+}
+// Een sectie met 'geen' is verplicht: invullen of aanvinken dat er niets is. Zonder 'geen' mag de lijst leeg zijn.
 function lijstControle(sectie, naam, talen) {
   if (sectie.geen) return [];
   const it = sectie.items.filter(i => talen.some(t => !leeg(i[t])));
-  if (!it.length) return [`${naam}: vul minstens één punt in, of vink aan dat er niets is.`];
+  if (!it.length) return 'geen' in sectie ? [`${naam}: vul minstens één punt in, of vink aan dat er niets is.`] : [];
   const p = [];
   it.forEach((i, n) => {
     if (leeg(i.nl)) p.push(`${naam}: punt ${n + 1} heeft geen Nederlandse tekst.`);
@@ -511,31 +486,26 @@ function lijstInvoer(sectie, velden, sjabloon, geenTekst) {
       velden.map(v => veld(v.label, { value: item[v.veld] || '', oninput: e => { item[v.veld] = e.target.value; bijwerken(); } })),
       verwijderKnop(sectie.items, i)));
   return [
-    geenVinkje(sectie, geenTekst),
+    geenTekst ? geenVinkje(sectie, geenTekst) : null,
     rijen,
     sectie.geen ? null : sterknop([icoon(PAD.plus), 'Punt toevoegen'], 'roos',
       { onclick: () => { sectie.items.push({ ...sjabloon }); tekenen(); } }),
   ];
 }
 
-function vergaderingInvoer() {
+function prioriteitInvoer() {
   const b = state.b;
-  const rijen = b.geen ? [] : b.vergaderingen.map((v, i) => {
-    const v1 = (naam, label, type = 'text') =>
-      veld(label, { type, value: v[naam], oninput: e => { v[naam] = e.target.value; bijwerken(); } });
-    return el('div', { class: 'row', style: 'grid-template-columns: 140px 1fr 1fr 180px auto auto' },
-      v1('uur', 'Uur', 'time'), v1('nl', 'Vergadering (NL)'), v1('fr', 'Réunion (FR)'), v1('wie', 'Wie'),
-      el('label', { class: 'check check--prio', title: 'Deze vergadering heeft prioriteit' },
-        el('input', { type: 'radio', name: 'prio', checked: v.prio,
-          onchange: () => { b.vergaderingen.forEach(x => { x.prio = x === v; }); bijwerken(); } }), 'Prioriteit'),
-      verwijderKnop(b.vergaderingen, i));
-  });
+  const tekstveld = (obj, k, label) => veld(label, { value: obj[k], oninput: e => { obj[k] = e.target.value; bijwerken(); } });
+  const team = (t, n) => el('div', { class: 'row', style: 'grid-template-columns: 220px 1fr 1fr' },
+    tekstveld(t, 'wie', `Team ${n}: wie`), tekstveld(t, 'nl', `Taak team ${n} (NL)`), tekstveld(t, 'fr', `Tâche équipe ${n} (FR)`));
   return [
-    geenVinkje(b, 'Geen vergaderingen waarvoor verslag nodig is'),
-    rijen,
-    b.geen ? null : sterknop([icoon(PAD.plus), 'Vergadering toevoegen'], 'roos',
-      { onclick: () => { b.vergaderingen.push({ uur: '', nl: '', fr: '', wie: '', prio: false }); tekenen(); } }),
-    el('div', { style: 'margin-top: var(--space-4)' }, tweetaligVeld(b.noot, 'Opmerking (NL, optioneel)', 'Remarque (FR, facultatif)')),
+    el('div', { class: 'row', style: 'grid-template-columns: 1fr 1fr 180px' },
+      tekstveld(b.prio, 'nl', 'Commissie met voorrang (NL)'), tekstveld(b.prio, 'fr', 'Commission prioritaire (FR)'),
+      tekstveld(b.prio, 'wie', 'Wie')),
+    el('label', { class: 'check' },
+      el('input', { type: 'checkbox', checked: b.teams, onchange: e => { b.teams = e.target.checked; tekenen(); } }),
+      'Vandaag in twee teams'),
+    b.teams ? [team(b.team1, 1), team(b.team2, 2)] : null,
   ];
 }
 
@@ -555,31 +525,32 @@ function deadlineInvoer() {
 
 function citaatInvoer() {
   const pool = CITATEN.filter(toegelaten);
-  const select = el('select', { class: 'dw-veld__invoer', onchange: e => { state.citaat = Number(e.target.value); bijwerken(); } },
-    pool.map(c => el('option', { value: String(c.id), selected: c.id === state.citaat },
-      `${c.auteur} (${c.status.toLowerCase()}): ${c.nl.length > 70 ? c.nl.slice(0, 70) + '…' : c.nl}`)));
+  // Citaten die niet in de kernboodschap passen, staan achteraan en zijn gemarkeerd.
+  const past = new Map(pool.map(c => [c.id, citaatPast(c.id)]));
+  const geordend = [...pool].sort((x, y) => past.get(y.id) - past.get(x.id));
+  const aantalPassend = geordend.filter(c => past.get(c.id)).length;
+  const select = el('select', { class: 'dw-veld__invoer', onchange: e => { state.citaat = Number(e.target.value); tekenen(); } },
+    geordend.map(c => el('option', { value: String(c.id), selected: c.id === state.citaat },
+      `${past.get(c.id) ? '' : '[past niet] '}${c.auteur} (${c.status.toLowerCase()}): ${c.nl.length > 70 ? c.nl.slice(0, 70) + '\u2026' : c.nl}`)));
   if (!pool.some(c => c.id === state.citaat)) select.prepend(el('option', { value: '', selected: true }, '— kies een citaat —'));
+  const gekozen = CITATEN.find(c => c.id === state.citaat);
   return [
+    el('div', { class: 'row', style: 'grid-template-columns: 1fr auto' },
+      el('label', { class: 'dw-veld dw-veld--breed' }, el('span', { class: 'dw-veld__label' }, `Citaat (${aantalPassend} van ${pool.length} passen)`),
+        el('span', { class: 'dw-veld__ovaal' }, select)),
+      sterknop('Ander citaat kiezen', 'sirius', { onclick: () => { state.citaat = willekeurigCitaat(); tekenen(); } })),
+    gekozen ? el('p', { class: 'klein citaat-bron' }, chip(gekozen.status === 'Echt' ? 'azuur' : 'roos'),
+      gekozen.status === 'Echt' ? `Echt citaat${gekozen.bron ? ': ' + gekozen.bron : ''}` : 'Verzonnen citaat') : null,
+    el('label', { class: 'check' },
+      el('input', { type: 'checkbox', checked: state.moderneAuteurs, onchange: e => { state.moderneAuteurs = e.target.checked; tekenen(); } }),
+      'Ook auteurs van na de 19e eeuw tonen (volgens de nota niet de bedoeling)'),
+    el('p', { class: 'label subkop' }, 'Voorbehouden onder \u201CMeer info\u201D'),
     SLAGEN.map(s => el('label', { class: 'check' },
       el('input', { type: 'checkbox', checked: state.slagen.includes(s.id), onchange: e => {
         state.slagen = e.target.checked ? [...state.slagen, s.id] : state.slagen.filter(x => x !== s.id);
         bijwerken();
       } }), `${s.nl} / ${s.fr}`)),
-    el('div', { class: 'row', style: 'grid-template-columns: 1fr auto; margin-top: var(--space-4)' },
-      el('label', { class: 'dw-veld dw-veld--breed' }, el('span', { class: 'dw-veld__label' }, `Citaat (${pool.length} beschikbaar)`),
-        el('span', { class: 'dw-veld__ovaal' }, select)),
-      sterknop('Ander citaat kiezen', 'sirius', { onclick: () => { state.citaat = willekeurigCitaat(); tekenen(); } })),
-    el('label', { class: 'check' },
-      el('input', { type: 'checkbox', checked: state.moderneAuteurs, onchange: e => { state.moderneAuteurs = e.target.checked; tekenen(); } }),
-      'Ook auteurs van na de 19e eeuw tonen (volgens de nota niet de bedoeling)'),
   ];
-}
-
-function kortVoorbehoudVeld() {
-  const v = veld('Korte slag om de arm', { onchange: e => { state.kortVoorbehoud = e.target.value; bijwerken(); } }, 'select');
-  v.querySelector('select').append(...Object.entries(KORT_VOORBEHOUD).map(([k, x]) =>
-    el('option', { value: k, selected: k === state.kortVoorbehoud }, x.nl === x.fr ? x.nl : `${x.nl} / ${x.fr}`)));
-  return v;
 }
 
 // ---------- Weergave ----------
@@ -588,7 +559,7 @@ const talen = () => instellingen.volgorde.split('-');
 const TAALNAAM = { nl: 'Nederlands', fr: 'Français' };
 
 function sectieTekst(s) {
-  const voorstel = s.tekst();
+  const voorstel = s.tekst ? s.tekst() : { nl: '', fr: '' };
   const aangepast = state.aangepast[s.key] || {};
   const uit = {};
   for (const t of ['nl', 'fr']) uit[t] = aangepast[t] ? aangepast[t].tekst : voorstel[t];
@@ -597,17 +568,22 @@ function sectieTekst(s) {
 
 function tekenen() {
   const houder = document.getElementById('secties');
-  houder.replaceChildren(...SECTIES.map(s => {
+  const eersteExtra = SECTIES.find(s => s.extra);
+  houder.replaceChildren(...SECTIES.flatMap(s => {
     const invoer = s.invoer();
-    const [code, naam] = s.titel.split('. ');
-    return el('section', { class: 'kaart', id: 'sectie-' + s.key },
+    const [code, naam] = s.extra ? [null, s.titel] : s.titel.split('. ');
+    const tussenkop = s === eersteExtra ? el('div', { class: 'tussenkop' },
+      el('p', { class: 'label kaart__code' }, 'Meer info \u00B7 optioneel'),
+      el('h2', { class: 'titel' }, 'Bijkomende informatie'),
+      el('p', { class: 'hint' }, 'Komt alleen onder \u201CMeer info\u201D, als je dat aanzet bij de kernboodschap. Laat leeg wat niet nodig is.')) : null;
+    const kaart = el('section', { class: 'kaart', id: 'sectie-' + s.key },
       el('div', { class: 'kaart__kop' },
-        el('p', { class: 'label kaart__code' }, `Punt ${code} \u00B7 ${s.verplicht ? 'verplicht' : 'optioneel'}`),
+        el('p', { class: 'label kaart__code' }, code ? `Punt ${code} \u00B7 ${s.verplicht ? 'verplicht' : 'optioneel'}` : 'Meer info'),
         el('h2', { class: 'titel-s' }, naam),
         el('span', { class: 'status klein', role: 'status' })),
       el('p', { class: 'hint' }, s.hint),
       invoer ? el('div', { class: 'invoer' }, invoer) : null,
-      el('div', { class: 'cols' }, talen().map(t => el('div', {},
+      !s.tekst ? null : el('div', { class: 'cols' }, talen().map(t => el('div', {},
         el('div', { class: 'col-head' }, el('span', { class: 'label' }, TAALNAAM[t]),
           el('span', { class: 'flex' },
             el('span', { class: 'dw-badge dw-glas dw-glas--zacht aangepast-label', hidden: true }, 'Aangepast'),
@@ -629,13 +605,15 @@ function tekenen() {
               el('span', { class: 'dw-glasbalk__vulling' }))))) : null))),
       el('ul', { class: 'problems klein' }),
       el('p', { class: 'klein drift', hidden: true }));
+    return [tussenkop, kaart].filter(Boolean);
   }));
   bijwerken();
 }
 
-// De uitgebreide tekst onder "Meer info": alle punten behalve de kernboodschap.
+// De tekst onder "Meer info": vertalingen, voorbehouden en de bijkomende informatie, als dat aanstaat.
 function detailTekst(taal) {
-  return SECTIES.filter(s => !s.kern).map(s => sectieTekst(s).uit[taal].trim()).filter(Boolean).join('\n\n');
+  if (!state.meerInfo) return '';
+  return SECTIES.filter(s => s.inDetails).map(s => sectieTekst(s).uit[taal].trim()).filter(Boolean).join('\n\n');
 }
 function kernTekst(taal) { return sectieTekst(SECTIES.find(s => s.kern)).uit[taal].trim(); }
 
@@ -786,7 +764,7 @@ function melden(tekst) {
 }
 
 function laden(toestand) {
-  state = Object.assign(nieuweToestand(), JSON.parse(JSON.stringify(toestand)));
+  state = normaliseer(JSON.parse(JSON.stringify(toestand)));
   document.getElementById('datum').value = state.datum;
   tekenen();
   window.scrollTo({ top: 0, behavior: 'smooth' });
