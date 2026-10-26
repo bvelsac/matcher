@@ -1,7 +1,7 @@
 # Functional Analysis
 ## GM planning: booking occasional staff for Verslaggeving (working title)
 
-**Version:** 0.1 (draft for review)  
+**Version:** 0.2 (draft for review)  
 **Date:** 26 October 2026  
 **Document Type:** Conceptual Model & Business Rules
 
@@ -22,7 +22,7 @@
 | role | redacteur, revisor, hoofdredacteur or vertaler. One person does one role per half-day |
 | spic | The planning of the meetings (repository `bvelsac/crystalclear`); source of the workload |
 | JK | The jaarkalender (repository `bvelsac/infracriv`, folder `jaarkalender`); source of the presence of the staff |
-| pair | Monday with Tuesday, Wednesday with Thursday (4.6) |
+| deadline | spic's deadline (termijn) of a meeting: same day or next day (4.6) |
 | planner | The person who books the GMs |
 
 ---
@@ -39,7 +39,8 @@ In scope:
 - the workload per day and language, taken from spic (2.1);
 - the capacity of the staff per day, language and role, taken from JK (2.2), minus the half-days the
   planner marks as not available for this work (5);
-- the shortage per day and per pair, for redacteurs and revisors (4);
+- the shortage per day, after moving work to the next day where spic's deadline allows it, for
+  redacteurs and revisors (4);
 - the GMs: their languages and roles, the half-days they offer (2.3), and the bookings (6);
 - the Dimona declaration per booked half-day (6.3).
 
@@ -64,7 +65,10 @@ Not in scope:
   one place (spic, where the parameters can be changed).
 - The hours are the work of the **redacteurs** in that language. The work of the revisors follows from
   it (4.3).
-- The work of a meeting belongs to the **date of the meeting**.
+- The work of a meeting belongs to the **date of the meeting**, and must be done on that day or, when
+  the meeting's **deadline** in spic is "next day", on that day or the next working day (4.6).
+- A meeting without questions on its agenda has no working hours in spic and brings no work (the user,
+  26 October 2026).
 - A meeting that is cancelled or deleted in spic brings no work.
 - The application reads spic like PDC does: through spic's export, with its own copy and its own
   token (PDC functional analysis 1.3). The export must carry the working hours FR and NL (10, point 2).
@@ -175,28 +179,39 @@ surplus(day, role, language) = max(0, capacity − need)
 Shortages are shown in hours and in half-days of a GM (3 hours in the morning, 4 in the afternoon).
 Bookings are whole half-days.
 
-### 4.6 Pairs: Monday with Tuesday, Wednesday with Thursday
+### 4.6 Moving work to the next day: spic's deadline
 
-The work of Monday and Tuesday is taken together, and so is the work of Wednesday and Thursday (the
-user, 26 October 2026). Work moves **only forward, within the pair**: what is left on Monday can be
-done on Tuesday, but Tuesday's work cannot be done on Monday (a report cannot be made before the
-meeting), and Tuesday's work does not move to Wednesday. Friday stands alone. Moving work to the next
-day is preferred over booking a GM, unless the next day is busy too.
+Work can be moved to the next day, when that day has more staff, rather than booking a GM; unless the
+next day is busy too. Whether the work of a meeting may wait follows the **deadline of the meeting in
+spic** (the user, 26 October 2026):
 
-For each role and language, with Monday (first day) and Tuesday (second day):
+- **same day** (`zelfde-dag`): the work is done on the day of the meeting;
+- **next day** (`volgende-dag`): the work is done on the day of the meeting or the next working day.
 
-- carried = max(0, need_first − capacity_first): the work of Monday that the staff present on
-  Monday cannot do, carried to Tuesday;
-- **shortage of the pair** = max(0, need_second + carried − capacity_second);
-- a surplus on Monday does not help Tuesday.
+By default spic gives Monday and Wednesday "next day" and the other days "same day" (a parameter of
+spic per weekday), which gives the pairs Monday with Tuesday and Wednesday with Thursday. A user of spic
+can change the deadline of a single meeting; this application follows it. Work only moves **forward**:
+a report cannot be made before the meeting.
 
-**Where the GM hours can go.** A GM booked on Tuesday helps the whole shortage of the pair. A GM booked
-on Monday helps only up to the work carried from Monday. The application shows both limits.
+**Calculation**, for each role and language, day by day in date order (the work with the earliest
+deadline first):
 
-The revision of the work follows the work: the pair rule applies to revisors as well (the user,
+- *due today* = the work carried from the day before + the work of today's meetings with deadline
+  "same day";
+- *may wait* = the work of today's meetings with deadline "next day";
+- capacity today = the staff (4.2) plus the GMs booked (4.7);
+- **shortage of today** = max(0, due today − capacity today);
+- the capacity left after the work due today goes to the work that may wait; what does not fit is
+  *carried* to the next working day: carried = max(0, may wait − max(0, capacity today − due today)).
+
+A surplus on a day helps only work of that day or work carried into it, never work of later days.
+
+**Where the GM hours can go.** The shortage of a day is the work that has to be done that day. A GM
+booked that day helps the whole of it. A GM booked the day before helps only the part that was carried
+from that day. The application shows both.
+
+The revision of the work follows the work: the same deadlines apply to the revisors (the user,
 26 October 2026).
-
-The same rule applies to Wednesday and Thursday. Friday: shortage(Friday) as in 4.4.
 
 ### 4.7 GMs booked
 
@@ -255,7 +270,7 @@ in an append-only log like PDC's (PDC FA 1.6).
 ## 7. Screens
 
 1. **Week overview** (the main screen): days × language × role (redacteur, revisor), with per cell the
-   need, the staff capacity, the shortage per day, the shortage of the pair, the GM hours booked and what
+   need, the staff capacity, the work carried to the next day, the shortage, the GM hours booked and what
    is still missing. Staff used in another role (3.3) and every **rather not** use are listed with the
    day. Hoofdredacteur and vertaler: who is present, without a calculation.
 2. **Staff of the week**: per person and half-day, present or not (from JK), the role counted, and the
@@ -269,9 +284,10 @@ in an append-only log like PDC's (PDC FA 1.6).
 
 ## 8. Worked examples
 
-All amounts in hours, one language, redacteurs.
+All amounts in hours, one language, redacteurs. The deadlines are spic's defaults: the Monday meetings
+"next day", the Tuesday meetings "same day". "Carried" is the Monday work left for Tuesday (4.6).
 
-| | Need | Staff | Carried | Shortage of the pair |
+| | Need | Staff | Carried | Shortage on Tuesday |
 |---|---|---|---|---|
 | A: Monday | 40 | 30 | 10 | |
 | A: Tuesday | 20 | 35 | | max(0, 20 + 10 − 35) = **0**: nobody to book |
@@ -280,7 +296,12 @@ All amounts in hours, one language, redacteurs.
 | C: Monday | 20 | 35 | 0 (a surplus of 15 does not help Tuesday) | |
 | C: Tuesday | 45 | 35 | | max(0, 45 + 0 − 35) = **10**: four GM mornings (4 × 3) or three afternoons (3 × 4), or a mix, all on Tuesday; on Monday they would be of no use |
 
-**Revisors.** Example B: need of redacteurs on the pair 70 hours, need of revisors 70 × 3.5 / 12 ≈
+**A deadline changed by hand.** Example B, but one Tuesday meeting with 10 hours of work gets the
+deadline "next day" in spic: due on Tuesday 10 + 20 = 30, capacity 35, nothing short. The 5 hours of
+capacity left do half of that meeting's work; the other 5 hours are carried into Wednesday, where they
+are due.
+
+**Revisors.** Example B: need of redacteurs on Monday and Tuesday 70 hours, need of revisors 70 × 3.5 / 12 ≈
 20.4 hours, compared in the same way with the revisors present on Monday and Tuesday.
 
 **Roles.** NL, Wednesday: a revisor shortage of 8 hours. A hoofdredacteur present that day with
@@ -315,8 +336,8 @@ changed before the user asks for it:
 
 ### 9.3 What spic needs
 
-The export (FA Opnamebeheer §13.2, still to be built) must carry the working hours FR and NL of each
-meeting. spic hides them from readers today (`_voor_lezer` in `spic/app/planning.py`); this application
+The export (FA Opnamebeheer §13.2, still to be built) must carry the working hours FR and NL and the
+deadline of each meeting. spic hides them from readers today (`_voor_lezer` in `spic/app/planning.py`); this application
 reads with its own token, not as a reader. To be agreed with the spic session.
 
 ---
@@ -329,12 +350,12 @@ reads with its own token, not as a reader. To be agreed with the spic session.
    Opnamebeheer §13.2). GMs are asked in advance: can the planner calculate the shortage early enough?
    If not, the export would need the estimated work of weeks in concept too, or the planner works with
    an estimate. To be decided with the user and the spic session.
-4. **Meetings without questions.** spic estimates working hours from the questions on the agenda; a
-   meeting without questions has no working hours. Is that right, or does such a meeting bring work too?
+4. ~~Meetings without questions~~: they bring no work (the user, 26 October 2026; 2.1).
 5. **Configurable role rules** (3.3): fixed in this version; configurable later if needed.
 6. **A proposal of half-days** (BR-GM-005): the application could propose a set of offers that covers
    the shortage. Not in this version.
-7. **The pairs and spic's deadline.** spic has a deadline per weekday ("next day" on Monday and
-   Wednesday, "same day" on the other days), which matches the pairs of 4.6. The pairs are fixed by
-   weekday in this version; whether they should follow the deadline of each meeting instead is open.
-8. **Holidays and recess weeks**: a pair whose second day is a holiday, or a week without Monday.
+7. ~~Pairs or deadline~~: the deadline of each meeting in spic is followed (the user, 26 October 2026;
+   4.6). The pairs are what spic's default deadlines give.
+8. **The next working day** after a meeting with deadline "next day" on a Friday, before a holiday or in
+   the last week before a recess: proposal, the next day on which JK has working days (Monday after a
+   Friday), and a warning when that is more than one calendar day later.
