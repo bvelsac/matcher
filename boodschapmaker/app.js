@@ -25,16 +25,22 @@ const WERKLAST = {
   },
 };
 
-// Korte werklastformule voor de kernboodschap.
+// Werklast in de kernboodschap, van lang naar kort.
 const WERKLAST_KORT = {
-  licht: { nl: 'Rustige dag', fr: 'Journée calme' },
-  normaal: { nl: 'Normale dag', fr: 'Journée normale' },
-  zwaar: { nl: 'Zware dag', fr: 'Journée chargée' },
-  zeerzwaar: { nl: 'Zeer zware dag', fr: 'Journée très chargée' },
+  licht: { nl: ['Rustige dag: we eindigen op een normaal uur', 'Rustige dag'],
+           fr: ['Journée calme\u00A0: fin à l\u2019heure habituelle', 'Journée calme'] },
+  normaal: { nl: ['Normale werklast: we eindigen op een normaal uur', 'Normale dag'],
+             fr: ['Charge normale\u00A0: fin à l\u2019heure habituelle', 'Journée normale'] },
+  zwaar: { nl: ['Zware dag: het kan later worden dan gewoonlijk', 'Zware dag'],
+           fr: ['Journée chargée\u00A0: nous finirons peut-être plus tard', 'Journée chargée'] },
+  zeerzwaar: { nl: ['Zeer zware dag met te weinig mensen: elke hulp is welkom', 'Zeer zware dag'],
+               fr: ['Journée très chargée, en sous-effectif\u00A0: toute aide est bienvenue', 'Journée très chargée'] },
 };
 
-// De kernboodschap is wat in het vak op de homepage staat; de rest komt onder "Meer info".
+// De kernboodschap is wat in het vak op de homepage staat: KERN_REGELS regels van hooguit
+// KERN_MAX tekens. De rest komt onder "Meer info".
 const KERN_MAX = 108;
+const KERN_REGELS = 3;
 
 // Korte slag om de arm die altijd in de kernboodschap staat.
 const KORT_VOORBEHOUD = {
@@ -351,8 +357,9 @@ const SECTIES = [
   },
   {
     key: 'kern', titel: '7. Kernboodschap', verplicht: true, kern: true,
-    hint: `Dit staat in het vak op de homepage: hooguit ${KERN_MAX} tekens per taal. Het systeem vat de punten hierboven samen; ` +
-      'wat niet past, staat in het inklapbare blok \u201CMeer info\u201D.',
+    hint: `Dit staat in het vak op de homepage: ${KERN_REGELS} regels van hooguit ${KERN_MAX} tekens per taal. ` +
+      'Regel 1: dag, coördinatie en werklast. Regel 2: de vergaderingen, de prioriteit eerst. ' +
+      'Regel 3: achterstand, vertalingen, deadlines en de slag om de arm. Wat niet past, staat onder \u201CMeer info\u201D.',
     invoer: () => el('div', { class: 'row', style: 'grid-template-columns: minmax(0, 360px)' },
       kortVoorbehoudVeld()),
     tekst: () => ({ nl: kernVoorstel('nl'), fr: kernVoorstel('fr') }),
@@ -360,56 +367,104 @@ const SECTIES = [
       const { uit } = sectieTekst(SECTIES.find(x => x.kern));
       const p = [];
       for (const t of ['nl', 'fr']) {
-        const n = uit[t].trim().length;
-        if (!n) p.push(`Kernboodschap (${TAALNAAM[t]}) is leeg.`);
-        else if (n > KERN_MAX) p.push(`Kernboodschap (${TAALNAAM[t]}): ${n} tekens, hooguit ${KERN_MAX}.`);
+        const regels = kernRegels(uit[t]);
+        if (!regels.length) p.push(`Kernboodschap (${TAALNAAM[t]}) is leeg.`);
+        if (regels.length > KERN_REGELS) p.push(`Kernboodschap (${TAALNAAM[t]}): ${regels.length} regels, hooguit ${KERN_REGELS}.`);
+        regels.forEach((r, i) => {
+          if (r.length > KERN_MAX) p.push(`Kernboodschap (${TAALNAAM[t]}), regel ${i + 1}: ${r.length} tekens, hooguit ${KERN_MAX}.`);
+        });
       }
       return p;
     },
   },
 ];
 
-// Stelt de kernboodschap samen: dag, coördinatie en de korte slag om de arm staan er altijd in;
-// de andere onderdelen komen erbij in volgorde van belang, zolang het geheel binnen KERN_MAX blijft.
-function kernVoorstel(taal) {
-  const nl = taal === 'nl';
-  const [y, m, d] = (state.datum || isoDatum(new Date())).split('-').map(Number);
-  const dag = new Date(y, m - 1, d).toLocaleDateString(nl ? 'nl-BE' : 'fr-BE', { weekday: 'short' }).replace('.', '');
-  const vast = {
-    dag: `${dag.charAt(0).toUpperCase()}${dag.slice(1)} ${d}/${m}`,
-    coord: leeg(state.coordinator) ? '' : (nl ? `Coörd.: ${state.coordinator.trim()}` : `Coord.\u00A0: ${state.coordinator.trim()}`),
-    kort: (KORT_VOORBEHOUD[state.kortVoorbehoud] || KORT_VOORBEHOUD.voorbehoud)[taal],
-  };
-  // Elke keuze heeft varianten van lang naar kort; de eerste die past, wordt genomen.
-  const prio = state.b.vergaderingen.find(v => v.prio && !leeg(nl ? v.nl : v.fr));
-  const keuzes = [];
-  if (state.b.geen) keuzes.push(['prio', [nl ? 'Geen vergaderingen met verslag' : 'Pas de réunion avec compte rendu']]);
-  else if (prio) {
-    const naam = nl ? prio.nl.trim() : prio.fr.trim();
-    const uur = prio.uur ? ' ' + uurTekst(prio.uur, taal) : '';
-    const wie = prio.wie ? ` (${prio.wie.trim()})` : '';
-    const kop = nl ? 'Prio: ' : 'Priorité\u00A0: ';
-    // Te lange namen worden ingekort, zodat de prioriteit niet wegvalt voor minder belangrijke punten.
-    const ingekort = [50, 40, 30, 20].filter(n => naam.length > n).map(n => kop + naam.slice(0, n).trimEnd() + '\u2026' + wie);
-    keuzes.push(['prio', [kop + naam + uur + wie, kop + naam + wie, kop + naam, ...ingekort]]);
-  }
-  keuzes.push(['werklast', [WERKLAST_KORT[state.werklast][taal]]]);
-  if (!state.a.geen && state.a.items.some(i => !leeg(i.nl) || !leeg(i.fr)))
-    keuzes.push(['a', [nl ? 'Eerst achterstand van gisteren' : 'D\u2019abord le retard d\u2019hier', nl ? 'Achterstand' : 'Retard d\u2019hier']]);
-  const vert = state.c.geen ? 0 : state.c.items.filter(i => !leeg(i.nl) || !leeg(i.fr)).length;
-  if (vert) keuzes.push(['c', [nl ? `Vertalingen: ${vert}` : `Traductions\u00A0: ${vert}`]]);
+function kernRegels(tekst) { return tekst.split('\n').map(r => r.trim()).filter(Boolean); }
 
-  const volgorde = ['dag', 'prio', 'a', 'werklast', 'c', 'coord', 'kort'];
-  const delen = { ...vast };
-  const samen = () => volgorde.map(k => delen[k]).filter(Boolean).join(' \u00B7 ').replace(' \u00B7 ' + vast.kort, ' \u2013 ' + vast.kort);
-  for (const [k, varianten] of keuzes) {
-    for (const v of varianten) {
-      delen[k] = v;
-      if (samen().length <= KERN_MAX) break;
-      delete delen[k];
+// Bouwt één regel uit stukken in leesvolgorde. Elk stuk heeft een belang (0 = eerst) en varianten van
+// lang naar kort. Eerst komen zoveel mogelijk stukken erin in hun kortste vorm, in volgorde van belang;
+// daarna krijgt elk stuk, weer in volgorde van belang, de langste variant die de regel binnen max houdt.
+// Geeft `telling.aantal` het aantal stukken dat in de regel staat, als telling meegegeven is.
+function bouwRegel(stukken, max = KERN_MAX, telling = {}) {
+  const gekozen = new Map();
+  const tekst = () => stukken.filter(x => gekozen.has(x)).map(x => gekozen.get(x)).join(' \u00B7 ');
+  const opBelang = stukken.filter(x => x.varianten.length).sort((a, b) => a.belang - b.belang);
+  for (const stuk of opBelang) {
+    gekozen.set(stuk, stuk.varianten[stuk.varianten.length - 1]);
+    if (tekst().length > max) gekozen.delete(stuk);
+  }
+  for (const stuk of opBelang.filter(x => gekozen.has(x))) {
+    for (const v of stuk.varianten) {
+      gekozen.set(stuk, v);
+      if (tekst().length <= max) break;
     }
   }
-  return samen();
+  telling.aantal = gekozen.size;
+  return tekst();
+}
+
+// Varianten van een naam: volledig, dan ingekort met een beletselteken.
+function namen(naam, voor = '', na = '') {
+  return [voor + naam + na, ...[60, 45].filter(n => naam.length > n).map(n => voor + naam.slice(0, n).trimEnd() + '\u2026' + na)];
+}
+
+// Stelt de kernboodschap samen in drie regels.
+function kernVoorstel(taal) {
+  const nl = taal === 'nl';
+  const tekstVan = x => (nl ? x.nl : x.fr || '').trim();
+  const dp = nl ? ': ' : '\u00A0: ';
+
+  // Regel 1: dag, coördinatie, werklast.
+  const [y, m, d] = (state.datum || isoDatum(new Date())).split('-').map(Number);
+  const datum = new Date(y, m - 1, d);
+  const lang = datum.toLocaleDateString(nl ? 'nl-BE' : 'fr-BE', { weekday: 'long', day: 'numeric', month: 'long' });
+  const kort = datum.toLocaleDateString(nl ? 'nl-BE' : 'fr-BE', { weekday: 'short' }).replace('.', '') + ` ${d}/${m}`;
+  const hoofd = x => x.charAt(0).toUpperCase() + x.slice(1);
+  const coord = state.coordinator.trim();
+  const regel1 = bouwRegel([
+    { belang: 0, varianten: [hoofd(lang), hoofd(kort)] },
+    { belang: 0, varianten: coord ? [(nl ? 'Coördinatie' : 'Coordination') + dp + coord, (nl ? 'Coörd.' : 'Coord.') + dp + coord] : [] },
+    { belang: 1, varianten: WERKLAST_KORT[state.werklast][taal] },
+  ]);
+
+  // Regel 2: de vergaderingen, de prioritaire eerst.
+  let regel2;
+  if (state.b.geen) regel2 = nl ? 'Vandaag geen vergaderingen waarvoor verslag nodig is.' : 'Aujourd\u2019hui, aucune réunion nécessitant un compte rendu.';
+  else {
+    const vg = state.b.vergaderingen.filter(v => tekstVan(v));
+    const prio = vg.find(v => v.prio) || vg[0];
+    const rest = vg.filter(v => v !== prio);
+    const stuk = (v, belang, voor = '') => {
+      const uur = v.uur ? ' ' + uurTekst(v.uur, taal) : '';
+      const wie = v.wie.trim() ? ` (${v.wie.trim()})` : '';
+      return { belang, varianten: [voor + tekstVan(v) + uur + wie, ...namen(tekstVan(v), voor, wie), ...namen(tekstVan(v), voor)] };
+    };
+    const stukken = prio ? [stuk(prio, 0, nl ? 'Prio: ' : 'Priorité\u00A0: '), ...rest.map((v, i) => stuk(v, i + 1))] : [];
+    // Vergaderingen die niet passen, worden geteld.
+    const telling = {};
+    regel2 = bouwRegel(stukken, KERN_MAX - 14, telling);
+    const weg = stukken.length - telling.aantal;
+    if (weg > 0) regel2 += nl ? ` \u00B7 +${weg} andere` : ` \u00B7 +${weg} autre${weg > 1 ? 's' : ''}`;
+  }
+
+  // Regel 3: achterstand, vertalingen, deadlines, en altijd de korte slag om de arm.
+  const slag = (KORT_VOORBEHOUD[state.kortVoorbehoud] || KORT_VOORBEHOUD.voorbehoud)[taal];
+  const stukken3 = [];
+  const a = state.a.geen ? [] : state.a.items.filter(i => tekstVan(i));
+  if (a.length) stukken3.push({ belang: 0, varianten: [
+    ...namen(tekstVan(a[0]), nl ? 'Eerst van gisteren: ' : 'D\u2019abord, d\u2019hier\u00A0: '),
+    nl ? 'Eerst achterstand van gisteren' : 'D\u2019abord le retard d\u2019hier'] });
+  const c = state.c.geen ? [] : state.c.items.filter(i => tekstVan(i));
+  if (c.length) {
+    const lijst = c.map(i => tekstVan(i) + (i.wie.trim() ? ` (${i.wie.trim()})` : '')).join(', ');
+    stukken3.push({ belang: 1, varianten: [(nl ? 'Vertalingen' : 'Traductions') + dp + lijst, (nl ? 'Vertalingen' : 'Traductions') + dp + c.length] });
+  }
+  const dl = state.deadlines.filter(x => tekstVan(x));
+  if (dl.length) stukken3.push({ belang: 2, varianten: namen(tekstVan(dl[0]), (nl ? 'Deadline' : 'Échéance') + dp,
+    dl[0].wie.trim() ? ` (${dl[0].wie.trim()})` : '') });
+  const regel3 = [bouwRegel(stukken3, KERN_MAX - slag.length - 3), slag].filter(Boolean).join(' \u2013 ');
+
+  return [regel1, regel2, regel3].join('\n');
 }
 
 function noot(t) { return leeg(t) ? '' : '\n' + t.trim(); }
@@ -565,12 +620,13 @@ function tekenen() {
             a[t] = { tekst: e.target.value, basis: s.tekst()[t] };
             bijwerken(e.target);
           } }),
-        s.kern ? el('div', { class: 'dw-glasbalk kernteller', 'data-taal': t },
-          el('div', { class: 'dw-glasbalk__kop' }, el('span', { id: 'kernteller-' + t }, 'Tekens'),
-            el('span', { class: 'dw-glasbalk__waarde' })),
-          el('div', { class: 'dw-glasbalk__spoor', role: 'meter', 'aria-labelledby': 'kernteller-' + t,
-            'aria-valuemin': '0', 'aria-valuemax': String(KERN_MAX) },
-            el('span', { class: 'dw-glasbalk__vulling' }))) : null))),
+        s.kern ? el('div', { class: 'kernteller' }, Array.from({ length: KERN_REGELS }, (_, i) =>
+          el('div', { class: 'dw-glasbalk' },
+            el('div', { class: 'dw-glasbalk__kop' }, el('span', { id: `kernteller-${t}-${i}` }, `Regel ${i + 1}`),
+              el('span', { class: 'dw-glasbalk__waarde' })),
+            el('div', { class: 'dw-glasbalk__spoor', role: 'meter', 'aria-labelledby': `kernteller-${t}-${i}`,
+              'aria-valuemin': '0', 'aria-valuemax': String(KERN_MAX) },
+              el('span', { class: 'dw-glasbalk__vulling' }))))) : null))),
       el('ul', { class: 'problems klein' }),
       el('p', { class: 'klein drift', hidden: true }));
   }));
@@ -589,7 +645,7 @@ function alleProblemen() { return SECTIES.flatMap(s => s.controle()); }
 const MEER_INFO = { nl: 'Meer info', fr: 'Plus d\u2019infos' };
 function homevak(kern, details, taal) {
   return el('div', { class: 'homevak', lang: taal },
-    el('p', { class: 'homevak__kern' }, kern),
+    el('div', { class: 'homevak__kern' }, kernRegels(kern).map(r => el('p', {}, r))),
     details ? el('details', {}, el('summary', { class: 'label' }, MEER_INFO[taal]),
       el('div', { class: 'homevak__details' }, details)) : null);
 }
@@ -602,15 +658,18 @@ function bijwerken(actief) {
     kaart.querySelectorAll('textarea.draft').forEach(ta => {
       const t = ta.dataset.taal;
       if (ta !== actief) ta.value = uit[t];
-      ta.rows = Math.max(2, uit[t].split('\n').reduce((n, r) => n + Math.max(1, Math.ceil(r.length / 70)), 0));
+      ta.rows = s.kern ? KERN_REGELS + 1 : Math.max(2, uit[t].split('\n').reduce((n, r) => n + Math.max(1, Math.ceil(r.length / 70)), 0));
       ta.classList.toggle('edited', !!aangepast[t]);
       const teller = ta.nextElementSibling;
       if (teller && teller.classList.contains('kernteller')) {
-        const n = uit[t].trim().length;
-        teller.querySelector('.dw-glasbalk__waarde').textContent = `${n} / ${KERN_MAX}`;
-        teller.querySelector('.dw-glasbalk__spoor').setAttribute('aria-valuenow', String(n));
-        teller.querySelector('.dw-glasbalk__vulling').style.setProperty('--waarde', `${Math.min(100, n / KERN_MAX * 100)}%`);
-        teller.classList.toggle('te-lang', n > KERN_MAX);
+        const regels = kernRegels(uit[t]);
+        teller.querySelectorAll('.dw-glasbalk').forEach((balk, i) => {
+          const n = (regels[i] || '').length;
+          balk.querySelector('.dw-glasbalk__waarde').textContent = `${n} / ${KERN_MAX}`;
+          balk.querySelector('.dw-glasbalk__spoor').setAttribute('aria-valuenow', String(n));
+          balk.querySelector('.dw-glasbalk__vulling').style.setProperty('--waarde', `${Math.min(100, n / KERN_MAX * 100)}%`);
+          balk.classList.toggle('te-lang', n > KERN_MAX);
+        });
       }
       const kop = ta.previousElementSibling;
       kop.querySelector('.aangepast-label').hidden = !aangepast[t];
@@ -644,9 +703,7 @@ function voorbeeldTekenen() {
           sterknop('Kern kopiëren', 'sirius', { onclick: () => kopieer(kern) }),
           sterknop('Meer info kopiëren', 'sirius', { onclick: () => kopieer(details) }))),
       vak,
-      el('p', { class: 'klein voorbeeld__teller' },
-        chip(kern.length > KERN_MAX ? 'koraal' : 'pistache'),
-        kern.length > KERN_MAX ? `${kern.length} tekens: ${kern.length - KERN_MAX} te veel` : `${kern.length} van ${KERN_MAX} tekens`));
+      voorbeeldTeller(kernRegels(kern)));
   }));
   const probs = alleProblemen();
   document.getElementById('problemen').replaceChildren(...probs.map(x => el('li', {}, x)));
@@ -657,6 +714,13 @@ function voorbeeldTekenen() {
   document.getElementById('plan-status').textContent = probs.length
     ? `Nog ${probs.length} punt(en) op te lossen.`
     : (planning()[state.datum] ? 'Er staat al een boodschap voor deze dag; inplannen overschrijft ze.' : '');
+}
+
+function voorbeeldTeller(regels) {
+  const fout = regels.length > KERN_REGELS || regels.some(r => r.length > KERN_MAX);
+  return el('p', { class: 'klein voorbeeld__teller' }, chip(fout ? 'koraal' : 'pistache'),
+    fout ? `Past niet: hooguit ${KERN_REGELS} regels van ${KERN_MAX} tekens`
+      : `${regels.length} van ${KERN_REGELS} regels \u00B7 ${regels.map(r => r.length).join(' / ')} tekens`);
 }
 
 function duizendtal(n) { return String(n).replace(/\B(?=(\d{3})+(?!\d))/g, '\u00A0'); }

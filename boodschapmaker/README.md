@@ -19,11 +19,13 @@ Nevel als licht thema) en de componentstijlen uit dat systeem. De lettertypes ko
   aanpast of als de invoer nadien nog wijzigt.
 - Slag om de arm: aan te vinken voorbehouden, plus altijd "Deze prioriteiten kunnen veranderen. Zoals X het
   zei: …" met een citaat uit `citaten.js`. Auteurs van na de 19e eeuw zijn standaard verborgen.
-- Kernboodschap van hooguit 108 tekens per taal: dat is wat in het vak op de homepage staat. Het systeem
-  stelt ze samen uit dag, prioritaire vergadering, achterstand, werklast, vertalingen, coördinator en een
-  korte slag om de arm (dag, coördinator en slag om de arm altijd; de rest zolang het past). Je kunt ze
-  aanpassen. De volledige boodschap staat eronder, ingeklapt onder "Meer info".
-- Inplannen kan pas als alles in orde is en de kernboodschap in beide talen hooguit 108 tekens telt.
+- Kernboodschap: drie regels van hooguit 108 tekens per taal, wat in het vak op de homepage staat.
+  Regel 1: dag, coördinatie en werklast. Regel 2: de vergaderingen, de prioritaire eerst (wat niet past,
+  wordt geteld als "+n andere"). Regel 3: achterstand van gisteren, vertalingen, deadlines en altijd een
+  korte slag om de arm. Per regel komen eerst zoveel mogelijk onderdelen erin in hun kortste vorm, daarna
+  worden ze verlengd waar er plaats is. Je kunt de regels aanpassen. De volledige boodschap staat eronder,
+  ingeklapt onder "Meer info".
+- Inplannen kan pas als alles in orde is en de kernboodschap in beide talen uit hooguit drie regels van 108 tekens bestaat.
 - Inplannen per datum, met een simulatie van wat de homepage toont (vanaf 07:00 op de dag zelf).
 
 ## Beperkingen

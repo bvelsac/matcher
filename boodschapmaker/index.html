@@ -78,16 +78,18 @@
   .instellingen { display: flex; flex-wrap: wrap; gap: var(--space-4); margin-bottom: var(--space-5); }
   .instellingen .dw-veld { width: 170px; }
   .voorbeeld { display: grid; gap: var(--space-3); align-content: start; min-width: 0; }
-  .homevak { max-width: 560px; padding: var(--space-3) var(--space-4); font: 400 14px/20px var(--font-sans); color: var(--inkt);
+  .homevak { max-width: 100%; padding: var(--space-3) var(--space-4); font: 400 14px/20px var(--font-sans); color: var(--inkt);
     background: var(--grond); border: 1px solid var(--lijn); border-radius: var(--radius-paneel); }
-  .homevak__kern { margin: 0; font-weight: 600; font-size: 15px; line-height: 22px; overflow-wrap: anywhere; }
+  .homevak__kern p { margin: 0; font-weight: 600; font-size: 14px; line-height: 21px; overflow-wrap: anywhere; }
   .homevak details { margin-top: var(--space-2); border-top: 1px solid var(--lijn); padding-top: var(--space-2); }
   .homevak summary { cursor: pointer; color: var(--accent); width: max-content; }
   .homevak summary:focus-visible { outline: 2px solid var(--focus); outline-offset: 3px; }
   .homevak__details { white-space: pre-wrap; margin-top: var(--space-2); }
   .voorbeeld__teller { display: flex; gap: var(--space-2); align-items: center; margin: 0; color: var(--inkt-gedempt); }
-  .kernteller { margin-top: var(--space-3); }
-  .kernteller.te-lang .dw-glasbalk__waarde { color: var(--koraal-vlak); }
+  .kernteller { margin-top: var(--space-3); display: grid; gap: var(--space-2); }
+  .kernteller .te-lang .dw-glasbalk__waarde { color: var(--koraal-vlak); }
+  /* Kernboodschap en voorbeeld onder elkaar: een regel van 108 tekens heeft de volle breedte nodig. */
+  #sectie-kern .cols, #preview-cols { grid-template-columns: minmax(0, 1fr); }
   #problemen-melding { margin-top: var(--space-5); }
   #problemen { margin: var(--space-1) 0 0; padding-left: 18px; }
   .acties { display: flex; flex-wrap: wrap; gap: var(--space-4); align-items: center; margin-top: var(--space-5); }
@@ -145,7 +147,7 @@
   <section class="kaart" id="voorbeeld">
     <p class="label kaart__code">Controle</p>
     <h2 class="titel-s">Voorbeeld in het vak van de homepage</h2>
-    <p class="hint">In het vak staat alleen de kernboodschap (hooguit 108 tekens). De volledige boodschap staat eronder, ingeklapt onder &ldquo;Meer info&rdquo;.</p>
+    <p class="hint">In het vak staat alleen de kernboodschap (drie regels van hooguit 108 tekens). De volledige boodschap staat eronder, ingeklapt onder &ldquo;Meer info&rdquo;.</p>
     <div class="cols" id="preview-cols"></div>
     <div class="dw-melding dw-glas dw-glas--zacht" id="problemen-melding" role="status" hidden>
       <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="8.5"/><path d="M12 7.5v5.5M12 16.2v.3"/></svg>
