@@ -14,6 +14,8 @@ interpreter list with its legal priority order, the meetings that need interpret
 (in later phases) availabilities from Google Forms, bookings, confirmations and reports.
 
 The business model is described in [docs/functional-analysis.md](docs/functional-analysis.md).
+A second application, for the occasional staff (GM) of Verslaggeving, is designed in
+[docs/gm-functional-analysis.md](docs/gm-functional-analysis.md) (draft, not built).
 Version 1.2 of that analysis adds what was decided for PDC: the meetings come from **spic**,
 the meeting planning in the repository `bvelsac/crystalclear`. PDC keeps its own copy of them,
 next to its own meetings, and an append-only log of the assignments.
