@@ -25,6 +25,25 @@ const WERKLAST = {
   },
 };
 
+// Korte werklastformule voor de kernboodschap.
+const WERKLAST_KORT = {
+  licht: { nl: 'Rustige dag', fr: 'Journée calme' },
+  normaal: { nl: 'Normale dag', fr: 'Journée normale' },
+  zwaar: { nl: 'Zware dag', fr: 'Journée chargée' },
+  zeerzwaar: { nl: 'Zeer zware dag', fr: 'Journée très chargée' },
+};
+
+// De kernboodschap is wat in het vak op de homepage staat; de rest komt onder "Meer info".
+const KERN_MAX = 108;
+
+// Korte slag om de arm die altijd in de kernboodschap staat.
+const KORT_VOORBEHOUD = {
+  voorbehoud: { nl: 'Onder voorbehoud.', fr: 'Sous réserve.' },
+  inchallah: { nl: 'Inch\u2019Allah.', fr: 'Inch\u2019Allah.' },
+  quesera: { nl: 'Que sera, sera.', fr: 'Que sera, sera.' },
+  quivivra: { nl: 'Wie leeft, die ziet.', fr: 'Qui vivra verra.' },
+};
+
 const SLAGEN = [
   { id: 'agenda', nl: 'Alles onder voorbehoud van wijzigingen in de agenda.',
     fr: 'Le tout sous réserve de modifications de l’agenda.' },
@@ -151,6 +170,7 @@ function nieuweToestand(datum = morgen()) {
     slagen: ['agenda', 'vergaderingen'],
     citaat: null,
     moderneAuteurs: false,
+    kortVoorbehoud: 'voorbehoud',
     aangepast: {}, // sectie -> { nl: {tekst, basis}, fr: {tekst, basis} }
   };
 }
@@ -172,8 +192,7 @@ function voorbeeldToestand() {
 
 const eersteBezoek = !lezen(OPSLAG_CONCEPT, null);
 let state = lezen(OPSLAG_CONCEPT, null) || voorbeeldToestand();
-let instellingen = Object.assign({ volgorde: 'nl-fr', breedte: 520, hoogte: 600, max: 1500 },
-  lezen(OPSLAG_INSTELLINGEN, {}));
+let instellingen = Object.assign({ volgorde: 'nl-fr' }, lezen(OPSLAG_INSTELLINGEN, {}));
 if (state.citaat == null) state.citaat = willekeurigCitaat();
 
 // ---------- Tekstvoorstellen per sectie ----------
@@ -330,7 +349,68 @@ const SECTIES = [
     },
     controle: () => CITATEN.some(x => x.id === state.citaat) ? [] : ['Kies een citaat voor de slag om de arm.'],
   },
+  {
+    key: 'kern', titel: '7. Kernboodschap', verplicht: true, kern: true,
+    hint: `Dit staat in het vak op de homepage: hooguit ${KERN_MAX} tekens per taal. Het systeem vat de punten hierboven samen; ` +
+      'wat niet past, staat in het inklapbare blok \u201CMeer info\u201D.',
+    invoer: () => el('div', { class: 'row', style: 'grid-template-columns: minmax(0, 360px)' },
+      kortVoorbehoudVeld()),
+    tekst: () => ({ nl: kernVoorstel('nl'), fr: kernVoorstel('fr') }),
+    controle: () => {
+      const { uit } = sectieTekst(SECTIES.find(x => x.kern));
+      const p = [];
+      for (const t of ['nl', 'fr']) {
+        const n = uit[t].trim().length;
+        if (!n) p.push(`Kernboodschap (${TAALNAAM[t]}) is leeg.`);
+        else if (n > KERN_MAX) p.push(`Kernboodschap (${TAALNAAM[t]}): ${n} tekens, hooguit ${KERN_MAX}.`);
+      }
+      return p;
+    },
+  },
 ];
+
+// Stelt de kernboodschap samen: dag, coördinatie en de korte slag om de arm staan er altijd in;
+// de andere onderdelen komen erbij in volgorde van belang, zolang het geheel binnen KERN_MAX blijft.
+function kernVoorstel(taal) {
+  const nl = taal === 'nl';
+  const [y, m, d] = (state.datum || isoDatum(new Date())).split('-').map(Number);
+  const dag = new Date(y, m - 1, d).toLocaleDateString(nl ? 'nl-BE' : 'fr-BE', { weekday: 'short' }).replace('.', '');
+  const vast = {
+    dag: `${dag.charAt(0).toUpperCase()}${dag.slice(1)} ${d}/${m}`,
+    coord: leeg(state.coordinator) ? '' : (nl ? `Coörd.: ${state.coordinator.trim()}` : `Coord.\u00A0: ${state.coordinator.trim()}`),
+    kort: (KORT_VOORBEHOUD[state.kortVoorbehoud] || KORT_VOORBEHOUD.voorbehoud)[taal],
+  };
+  // Elke keuze heeft varianten van lang naar kort; de eerste die past, wordt genomen.
+  const prio = state.b.vergaderingen.find(v => v.prio && !leeg(nl ? v.nl : v.fr));
+  const keuzes = [];
+  if (state.b.geen) keuzes.push(['prio', [nl ? 'Geen vergaderingen met verslag' : 'Pas de réunion avec compte rendu']]);
+  else if (prio) {
+    const naam = nl ? prio.nl.trim() : prio.fr.trim();
+    const uur = prio.uur ? ' ' + uurTekst(prio.uur, taal) : '';
+    const wie = prio.wie ? ` (${prio.wie.trim()})` : '';
+    const kop = nl ? 'Prio: ' : 'Priorité\u00A0: ';
+    // Te lange namen worden ingekort, zodat de prioriteit niet wegvalt voor minder belangrijke punten.
+    const ingekort = [50, 40, 30, 20].filter(n => naam.length > n).map(n => kop + naam.slice(0, n).trimEnd() + '\u2026' + wie);
+    keuzes.push(['prio', [kop + naam + uur + wie, kop + naam + wie, kop + naam, ...ingekort]]);
+  }
+  keuzes.push(['werklast', [WERKLAST_KORT[state.werklast][taal]]]);
+  if (!state.a.geen && state.a.items.some(i => !leeg(i.nl) || !leeg(i.fr)))
+    keuzes.push(['a', [nl ? 'Eerst achterstand van gisteren' : 'D\u2019abord le retard d\u2019hier', nl ? 'Achterstand' : 'Retard d\u2019hier']]);
+  const vert = state.c.geen ? 0 : state.c.items.filter(i => !leeg(i.nl) || !leeg(i.fr)).length;
+  if (vert) keuzes.push(['c', [nl ? `Vertalingen: ${vert}` : `Traductions\u00A0: ${vert}`]]);
+
+  const volgorde = ['dag', 'prio', 'a', 'werklast', 'c', 'coord', 'kort'];
+  const delen = { ...vast };
+  const samen = () => volgorde.map(k => delen[k]).filter(Boolean).join(' \u00B7 ').replace(' \u00B7 ' + vast.kort, ' \u2013 ' + vast.kort);
+  for (const [k, varianten] of keuzes) {
+    for (const v of varianten) {
+      delen[k] = v;
+      if (samen().length <= KERN_MAX) break;
+      delete delen[k];
+    }
+  }
+  return samen();
+}
 
 function noot(t) { return leeg(t) ? '' : '\n' + t.trim(); }
 function noot2(n, naam) {
@@ -440,6 +520,13 @@ function citaatInvoer() {
   ];
 }
 
+function kortVoorbehoudVeld() {
+  const v = veld('Korte slag om de arm', { onchange: e => { state.kortVoorbehoud = e.target.value; bijwerken(); } }, 'select');
+  v.querySelector('select').append(...Object.entries(KORT_VOORBEHOUD).map(([k, x]) =>
+    el('option', { value: k, selected: k === state.kortVoorbehoud }, x.nl === x.fr ? x.nl : `${x.nl} / ${x.fr}`)));
+  return v;
+}
+
 // ---------- Weergave ----------
 
 const talen = () => instellingen.volgorde.split('-');
@@ -477,26 +564,34 @@ function tekenen() {
             const a = state.aangepast[s.key] = state.aangepast[s.key] || {};
             a[t] = { tekst: e.target.value, basis: s.tekst()[t] };
             bijwerken(e.target);
-          } })))),
+          } }),
+        s.kern ? el('div', { class: 'dw-glasbalk kernteller', 'data-taal': t },
+          el('div', { class: 'dw-glasbalk__kop' }, el('span', { id: 'kernteller-' + t }, 'Tekens'),
+            el('span', { class: 'dw-glasbalk__waarde' })),
+          el('div', { class: 'dw-glasbalk__spoor', role: 'meter', 'aria-labelledby': 'kernteller-' + t,
+            'aria-valuemin': '0', 'aria-valuemax': String(KERN_MAX) },
+            el('span', { class: 'dw-glasbalk__vulling' }))) : null))),
       el('ul', { class: 'problems klein' }),
       el('p', { class: 'klein drift', hidden: true }));
   }));
   bijwerken();
 }
 
-function volledigeTekst(taal) {
-  return SECTIES.map(s => sectieTekst(s).uit[taal].trim()).filter(Boolean).join('\n\n');
+// De uitgebreide tekst onder "Meer info": alle punten behalve de kernboodschap.
+function detailTekst(taal) {
+  return SECTIES.filter(s => !s.kern).map(s => sectieTekst(s).uit[taal].trim()).filter(Boolean).join('\n\n');
 }
+function kernTekst(taal) { return sectieTekst(SECTIES.find(s => s.kern)).uit[taal].trim(); }
 
-function alleProblemen() {
-  const p = SECTIES.flatMap(s => s.controle());
-  for (const t of ['nl', 'fr']) {
-    const n = volledigeTekst(t).length;
-    if (n > instellingen.max) p.push(`${TAALNAAM[t]}: ${n} tekens, maximum is ${instellingen.max}.`);
-  }
-  document.querySelectorAll('#preview-cols .preview-box.overflow').forEach(b =>
-    p.push(`${TAALNAAM[b.dataset.taal]}: de boodschap past niet integraal in het vak.`));
-  return p;
+function alleProblemen() { return SECTIES.flatMap(s => s.controle()); }
+
+// Het vak op de homepage: de kernboodschap, met de rest in een inklapbaar blok.
+const MEER_INFO = { nl: 'Meer info', fr: 'Plus d\u2019infos' };
+function homevak(kern, details, taal) {
+  return el('div', { class: 'homevak', lang: taal },
+    el('p', { class: 'homevak__kern' }, kern),
+    details ? el('details', {}, el('summary', { class: 'label' }, MEER_INFO[taal]),
+      el('div', { class: 'homevak__details' }, details)) : null);
 }
 
 function bijwerken(actief) {
@@ -509,6 +604,14 @@ function bijwerken(actief) {
       if (ta !== actief) ta.value = uit[t];
       ta.rows = Math.max(2, uit[t].split('\n').reduce((n, r) => n + Math.max(1, Math.ceil(r.length / 70)), 0));
       ta.classList.toggle('edited', !!aangepast[t]);
+      const teller = ta.nextElementSibling;
+      if (teller && teller.classList.contains('kernteller')) {
+        const n = uit[t].trim().length;
+        teller.querySelector('.dw-glasbalk__waarde').textContent = `${n} / ${KERN_MAX}`;
+        teller.querySelector('.dw-glasbalk__spoor').setAttribute('aria-valuenow', String(n));
+        teller.querySelector('.dw-glasbalk__vulling').style.setProperty('--waarde', `${Math.min(100, n / KERN_MAX * 100)}%`);
+        teller.classList.toggle('te-lang', n > KERN_MAX);
+      }
       const kop = ta.previousElementSibling;
       kop.querySelector('.aangepast-label').hidden = !aangepast[t];
       kop.querySelector('.herstel').hidden = !aangepast[t];
@@ -530,33 +633,21 @@ function bijwerken(actief) {
 
 function voorbeeldTekenen() {
   const cols = document.getElementById('preview-cols');
+  const open = new Set([...cols.querySelectorAll('details[open]')].map(d => d.closest('.voorbeeld').dataset.taal));
   cols.replaceChildren(...talen().map(t => {
-    const tekst = volledigeTekst(t);
-    const vak = el('div', { class: 'preview-box', 'data-taal': t,
-      style: `width:min(100%, ${instellingen.breedte}px); height:${instellingen.hoogte}px` }, tekst);
-    const n = tekst.length;
-    const pct = Math.min(100, Math.round(n / instellingen.max * 100));
-    return el('div', { class: 'voorbeeld' },
+    const kern = kernTekst(t), details = detailTekst(t);
+    const vak = homevak(kern, details, t);
+    if (open.has(t)) vak.querySelector('details')?.setAttribute('open', '');
+    return el('div', { class: 'voorbeeld', 'data-taal': t },
       el('div', { class: 'col-head' }, el('span', { class: 'label' }, TAALNAAM[t]),
-        sterknop('Kopiëren', 'sirius', { onclick: () => kopieer(tekst) })),
+        el('span', { class: 'flex' },
+          sterknop('Kern kopiëren', 'sirius', { onclick: () => kopieer(kern) }),
+          sterknop('Meer info kopiëren', 'sirius', { onclick: () => kopieer(details) }))),
       vak,
-      el('div', { class: 'dw-glasbalk' },
-        el('div', { class: 'dw-glasbalk__kop' }, el('span', { id: 'teller-' + t }, 'Tekens'),
-          el('span', { class: 'dw-glasbalk__waarde' }, `${duizendtal(n)} / ${duizendtal(instellingen.max)}`)),
-        el('div', { class: 'dw-glasbalk__spoor', role: 'meter', 'aria-labelledby': 'teller-' + t,
-          'aria-valuemin': '0', 'aria-valuemax': String(instellingen.max), 'aria-valuenow': String(n) },
-          el('span', { class: 'dw-glasbalk__vulling', style: `--waarde: ${pct}%` })),
-        el('span', { class: 'dw-glasbalk__hulp' })));
+      el('p', { class: 'klein voorbeeld__teller' },
+        chip(kern.length > KERN_MAX ? 'koraal' : 'pistache'),
+        kern.length > KERN_MAX ? `${kern.length} tekens: ${kern.length - KERN_MAX} te veel` : `${kern.length} van ${KERN_MAX} tekens`));
   }));
-  cols.querySelectorAll('.preview-box').forEach(vak => {
-    const over = vak.scrollHeight > vak.clientHeight + 1;
-    vak.classList.toggle('overflow', over);
-    const hulp = vak.parentElement.querySelector('.dw-glasbalk__hulp');
-    const teLang = vak.textContent.length > instellingen.max;
-    hulp.replaceChildren(...(over || teLang
-      ? [chip('koraal'), [teLang ? 'Te veel tekens' : null, over ? 'past niet in het vak' : null].filter(Boolean).join(', ')]
-      : [chip('pistache'), 'Past in het vak']));
-  });
   const probs = alleProblemen();
   document.getElementById('problemen').replaceChildren(...probs.map(x => el('li', {}, x)));
   document.getElementById('problemen-melding').hidden = !probs.length;
@@ -581,7 +672,7 @@ function planning() { return lezen(OPSLAG_PLANNING, {}); }
 function inplannen() {
   const p = planning();
   p[state.datum] = {
-    nl: volledigeTekst('nl'), fr: volledigeTekst('fr'),
+    kern: { nl: kernTekst('nl'), fr: kernTekst('fr') }, details: { nl: detailTekst('nl'), fr: detailTekst('fr') },
     toestand: JSON.parse(JSON.stringify(state)), opgeslagen: new Date().toISOString(),
   };
   schrijven(OPSLAG_PLANNING, p);
@@ -642,14 +733,14 @@ function simuleren() {
   const moment = document.getElementById('sim-moment').value;
   const taal = document.getElementById('sim-taal').value;
   const vak = document.getElementById('sim-vak');
-  vak.style.width = `min(100%, ${instellingen.breedte}px)`;
-  vak.style.height = `${instellingen.hoogte}px`;
-  if (!moment) { vak.textContent = ''; return; }
+  if (!moment) { vak.replaceChildren(); return; }
   const [dag, uur] = moment.split('T');
   const b = planning()[dag];
-  if (uur < '07:00') vak.textContent = taal === 'nl' ? '(De boodschap van vandaag verschijnt om 07:00.)' : '(Le message du jour apparaîtra à 7h00.)';
-  else if (!b) vak.textContent = taal === 'nl' ? '(Geen boodschap ingepland voor deze dag.)' : '(Aucun message prévu pour ce jour.)';
-  else vak.textContent = b[taal];
+  const leegVak = tekst => homevak(tekst, '', taal);
+  if (uur < '07:00') vak.replaceChildren(leegVak(taal === 'nl' ? '(De boodschap van vandaag verschijnt om 07:00.)' : '(Le message du jour apparaîtra à 7h00.)'));
+  else if (!b) vak.replaceChildren(leegVak(taal === 'nl' ? '(Geen boodschap ingepland voor deze dag.)' : '(Aucun message prévu pour ce jour.)'));
+  // Boodschappen van vóór de kernboodschap hebben alleen een volledige tekst.
+  else vak.replaceChildren(b.kern ? homevak(b.kern[taal], b.details[taal], taal) : homevak('', b[taal], taal));
 }
 
 // ---------- Opstart ----------
@@ -662,15 +753,6 @@ function init() {
   const volgorde = document.getElementById('volgorde');
   volgorde.value = instellingen.volgorde;
   volgorde.addEventListener('change', () => { instellingen.volgorde = volgorde.value; schrijven(OPSLAG_INSTELLINGEN, instellingen); tekenen(); });
-
-  for (const [id, sleutel] of [['vak-b', 'breedte'], ['vak-h', 'hoogte'], ['vak-max', 'max']]) {
-    const inp = document.getElementById(id);
-    inp.value = instellingen[sleutel];
-    inp.addEventListener('input', () => {
-      const v = Number(inp.value);
-      if (v > 0) { instellingen[sleutel] = v; schrijven(OPSLAG_INSTELLINGEN, instellingen); voorbeeldTekenen(); simuleren(); }
-    });
-  }
 
   const nieuw = document.getElementById('nieuw');
   nieuw.addEventListener('click', () => tweeStappen(nieuw, 'Concept wissen?', () => {
