@@ -11,7 +11,7 @@ nieuwe documentatie "PDC".
 - `docs/pdc-voorstel.md`: wat in het prototype van fase 1 afwijkt van de besluiten, en de voorstellen die op een
   beslissing van de gebruiker wachten.
 - `docs/development-plan.md`: de fasen; `docs/visual-style.md`: de gevraagde stijl.
-- `docs/gm-functional-analysis.md` (versie 0.1, ontwerp): de tweede toepassing, voor de gelegenheidsmedewerkers (GM) van
+- `docs/gm-functional-analysis.md` (ontwerp, nog niet gebouwd): de tweede toepassing, voor de gelegenheidsmedewerkers (GM) van
   de Verslaggeving: tekort per dag uit spic (werk) en de jaarkalender (vast personeel), en het boeken van GM.
 - De vergaderingen komen uit **spic**, in de repository `bvelsac/crystalclear`. De besluiten over de koppeling staan
   daar in `docs/stand-van-zaken.md`, het contract (export, schrijfroute, token) in `docs/FA_opnamebeheer_v1.2.md` §13.2.

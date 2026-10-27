@@ -1,8 +1,8 @@
 # Functional Analysis
 ## GM planning: booking occasional staff for Verslaggeving (working title)
 
-**Version:** 0.2 (draft for review)  
-**Date:** 26 October 2026  
+**Version:** 0.3 (draft for review)  
+**Date:** 27 October 2026  
 **Document Type:** Conceptual Model & Business Rules
 
 > This application helps the planner of the Verslaggeving directorate decide how many occasional
@@ -69,6 +69,8 @@ Not in scope:
   the meeting's **deadline** in spic is "next day", on that day or the next working day (4.6).
 - A meeting without questions on its agenda has no working hours in spic and brings no work (the user,
   26 October 2026).
+- The GMs are planned **week by week**: the weeks spic passes on (pre-definitive or definitive) are
+  enough; weeks in concept are not needed (the user, 27 October 2026).
 - A meeting that is cancelled or deleted in spic brings no work.
 - The application reads spic like PDC does: through spic's export, with its own copy and its own
   token (PDC functional analysis 1.3). The export must carry the working hours FR and NL (10, point 2).
@@ -186,7 +188,10 @@ next day is busy too. Whether the work of a meeting may wait follows the **deadl
 spic** (the user, 26 October 2026):
 
 - **same day** (`zelfde-dag`): the work is done on the day of the meeting;
-- **next day** (`volgende-dag`): the work is done on the day of the meeting or the next working day.
+- **next day** (`volgende-dag`): the work is done on the day of the meeting or the **next working day**
+  (the user, 27 October 2026): the next day on which JK has working days, so Monday after a Friday, or
+  the first day after a holiday. When that day lies in a week that is not planned yet, the carried work
+  is shown in the overview of that later week.
 
 By default spic gives Monday and Wednesday "next day" and the other days "same day" (a parameter of
 spic per weekday), which gives the pairs Monday with Tuesday and Wednesday with Thursday. A user of spic
@@ -346,16 +351,13 @@ reads with its own token, not as a reader. To be agreed with the spic session.
 
 1. **Name** of the application.
 2. **The export of spic** must carry the working hours FR and NL (9.3).
-3. **Weeks in concept.** spic passes on only weeks that are pre-definitive or definitive (FA
-   Opnamebeheer §13.2). GMs are asked in advance: can the planner calculate the shortage early enough?
-   If not, the export would need the estimated work of weeks in concept too, or the planner works with
-   an estimate. To be decided with the user and the spic session.
+3. ~~Weeks in concept~~: the GMs are planned week by week, so the weeks that spic passes on
+   (pre-definitive or definitive) are enough (the user, 27 October 2026; 2.1).
 4. ~~Meetings without questions~~: they bring no work (the user, 26 October 2026; 2.1).
 5. **Configurable role rules** (3.3): fixed in this version; configurable later if needed.
 6. **A proposal of half-days** (BR-GM-005): the application could propose a set of offers that covers
    the shortage. Not in this version.
 7. ~~Pairs or deadline~~: the deadline of each meeting in spic is followed (the user, 26 October 2026;
    4.6). The pairs are what spic's default deadlines give.
-8. **The next working day** after a meeting with deadline "next day" on a Friday, before a holiday or in
-   the last week before a recess: proposal, the next day on which JK has working days (Monday after a
-   Friday), and a warning when that is more than one calendar day later.
+8. ~~The next working day~~: when the deadline is "next day", the work may wait until the **next working
+   day**, also after a Friday, a holiday or before a recess (the user, 27 October 2026; 4.6).
