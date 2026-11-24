@@ -1,0 +1,35 @@
+{% extends "pdc2/base.html" %}
+{% block title %}Staff - PDC2{% endblock %}
+{% block body_class %}screen-pdc2-staff{% endblock %}
+{% block content %}
+{% with icon='bi-person-badge', heading='Staff of the week' %}{% include "pdc2/_week_head.html" %}{% endwith %}
+<p class="text-muted">Who works, by the validated calendars of the jaarkalender. Mark a half-day when the person does not count for this planning (training, coordination); the reason is asked.</p>
+{% if w.result %}
+{% set moves = {} %}{% for m in w.result.moves %}{% set _ = moves.update({(m.person.id, m.date, m.period): m}) %}{% endfor %}
+{% for language in languages %}
+<div class="card mb-4">
+    <div class="card-header"><h5 class="mb-0">{{ language|upper }}</h5></div>
+    <div class="card-body p-0"><div class="table-responsive">
+        <table class="table table-sm mb-0 staff-grid">
+            <thead>
+                <tr><th rowspan="2">Person</th><th rowspan="2">Role</th>{% for d in w.days %}<th colspan="2" class="text-center">{{ d|dayname }}</th>{% endfor %}</tr>
+                <tr>{% for d in w.days %}{% for period in periods %}<th class="text-center small">{{ period }}</th>{% endfor %}{% endfor %}</tr>
+            </thead>
+            <tbody>
+            {% for p in w.staff|sort(attribute='name') if p.language == language and p.standard_role %}
+                <tr>
+                    <th scope="row">{{ p.name }}{% if not p.validated %} <span class="io-badge io-badge--warm">not validated</span>{% endif %}</th>
+                    <td class="small">{{ p.standard_role|role }}</td>
+                    {% for d in w.days %}{% for period in periods %}
+                    {% set mark = marks.get((p.id, d, period)) %}{% set move = moves.get((p.id, d, period)) %}
+                    {% include "pdc2/_staff_cell.html" %}
+                    {% endfor %}{% endfor %}
+                </tr>
+            {% endfor %}
+            </tbody>
+        </table>
+    </div></div>
+</div>
+{% endfor %}
+{% endif %}
+{% endblock %}

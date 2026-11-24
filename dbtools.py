@@ -19,14 +19,15 @@ class OldDatabase(Exception):
     """The database was made before migrations existed and cannot be brought up to date."""
 
 
-def alembic_config(connection):
+def alembic_config(connection, location=None):
+    """location: the folder of the migrations (PDC's by default; PDC2 has its own, pdc2/migrations)."""
     config = Config()
-    config.set_main_option("script_location", os.path.join(ROOT, "migrations"))
+    config.set_main_option("script_location", location or os.path.join(ROOT, "migrations"))
     config.attributes["connection"] = connection
     return config
 
 
-def upgrade(engine):
+def upgrade(engine, location=None):
     """Bring the database to the newest version; create it when it is empty."""
     with engine.connect() as connection:
         tables = set(inspect(connection).get_table_names())
@@ -35,15 +36,15 @@ def upgrade(engine):
                 "This database was made by a version of PDC from before migrations (tables: {}). "
                 "It cannot be updated; there was no data worth keeping at that stage: move the file away "
                 "and run init-db again.".format(", ".join(sorted(tables))))
-        command.upgrade(alembic_config(connection), "head")
+        command.upgrade(alembic_config(connection, location), "head")
         connection.commit()
 
 
-def make_migration(engine, message):
+def make_migration(engine, message, location=None):
     """Write a new migration from the difference between the models and the database, which has
     to be at the newest version. Review the file before committing it."""
     with engine.connect() as connection:
-        command.revision(alembic_config(connection), message=message, autogenerate=True)
+        command.revision(alembic_config(connection, location), message=message, autogenerate=True)
 
 
 def differences(connection, metadata):

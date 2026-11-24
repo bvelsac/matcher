@@ -1,0 +1,25 @@
+{% set cell_id = 'staff-' ~ p.id ~ '-' ~ d.isoformat() ~ '-' ~ period %}
+<td id="{{ cell_id }}" class="staff-cell text-center {{ 'is-marked' if mark }}">
+    {% if not p.present(d, period) %}
+    <span class="text-muted" title="Not working">&middot;</span>
+    {% elif mark %}
+    <span class="io-badge io-badge--koud" title="{{ mark.reason }}">marked</span>
+    {% if current_user.is_editor %}
+    <form hx-post="{{ url_for('pdc2.mark', monday=w.monday.isoformat()) }}" hx-target="#{{ cell_id }}" hx-swap="outerHTML" class="d-inline">
+        <input type="hidden" name="person_id" value="{{ p.id }}"><input type="hidden" name="date" value="{{ d.isoformat() }}">
+        <input type="hidden" name="period" value="{{ period }}"><input type="hidden" name="action" value="unmark">
+        <button class="btn btn-link btn-sm p-0" type="submit" title="Count again: {{ mark.reason }}" aria-label="Count {{ p.name }} again on {{ d|dayname }} {{ period }}"><i class="bi bi-arrow-counterclockwise"></i></button>
+    </form>
+    {% endif %}
+    {% else %}
+    <span title="{{ (move.to_role if move else p.standard_role)|role }}">{{ ((move.to_role if move else p.standard_role)|role)[:3] }}</span>{% if move and move.level == 'liever-niet' %}<sup class="text-warning" title="rather not">!</sup>{% endif %}
+    {% if current_user.is_editor %}
+    <form hx-post="{{ url_for('pdc2.mark', monday=w.monday.isoformat()) }}" hx-target="#{{ cell_id }}" hx-swap="outerHTML"
+          hx-prompt="Why does {{ p.name }} not count on {{ d|dayname }} {{ period }}? (e.g. training, coordination)" class="d-inline">
+        <input type="hidden" name="person_id" value="{{ p.id }}"><input type="hidden" name="person_name" value="{{ p.name }}">
+        <input type="hidden" name="date" value="{{ d.isoformat() }}"><input type="hidden" name="period" value="{{ period }}">
+        <button class="btn btn-link btn-sm p-0" type="submit" aria-label="Mark {{ p.name }} on {{ d|dayname }} {{ period }} as not counting"><i class="bi bi-dash-circle"></i></button>
+    </form>
+    {% endif %}
+    {% endif %}
+</td>

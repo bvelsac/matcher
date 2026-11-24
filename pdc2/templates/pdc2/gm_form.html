@@ -1,0 +1,40 @@
+{% extends "pdc2/base.html" %}
+{% block title %}GM - PDC2{% endblock %}
+{% block body_class %}screen-pdc2-gms{% endblock %}
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h1><i class="bi bi-person-badge"></i> {{ gm.name if gm else 'New GM' }}</h1>
+    <a class="btn btn-secondary" href="{{ url_for('pdc2.gms') }}"><i class="bi bi-arrow-left"></i> Back</a>
+</div>
+<div class="row"><div class="col-lg-8">
+<div class="card"><div class="card-body">
+<form method="post">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+    <fieldset {{ 'disabled' if not current_user.is_editor }}>
+    <div class="row">
+        <div class="col-md-6 mb-3"><label class="form-label" for="first_name">First name *</label><input class="form-control" id="first_name" name="first_name" value="{{ values.get('first_name', '') }}" required></div>
+        <div class="col-md-6 mb-3"><label class="form-label" for="last_name">Last name *</label><input class="form-control" id="last_name" name="last_name" value="{{ values.get('last_name', '') }}" required></div>
+    </div>
+    <div class="row">
+        <div class="col-md-6 mb-3"><label class="form-label" for="email">Email *</label><input class="form-control" type="email" id="email" name="email" value="{{ values.get('email', '') }}" required>
+            <div class="form-text">The address of the Google Form's answers.</div></div>
+        <div class="col-md-6 mb-3"><label class="form-label" for="phone">Phone</label><input class="form-control" id="phone" name="phone" value="{{ values.get('phone', '') }}"></div>
+    </div>
+    <div class="mb-3"><span class="form-label d-block">Languages *</span>
+        {% for l in languages %}<div class="form-check form-check-inline"><input class="form-check-input" type="checkbox" name="languages" value="{{ l }}" id="lang-{{ l }}" {{ 'checked' if l in values.get('languages', []) }}><label class="form-check-label" for="lang-{{ l }}">{{ l|upper }}</label></div>{% endfor %}
+        <div class="form-text">Both languages is exceptional.</div></div>
+    <div class="row">
+        <div class="col-md-6 mb-3"><label class="form-label" for="standard_role">Standard role *</label>
+            <select class="form-select" id="standard_role" name="standard_role">{% for r in roles %}<option value="{{ r }}" {{ 'selected' if values.get('standard_role') == r }}>{{ r|role }}</option>{% endfor %}</select></div>
+        <div class="col-md-6 mb-3"><span class="form-label d-block">Can also work as</span>
+            {% for r in roles %}<div class="form-check form-check-inline"><input class="form-check-input" type="checkbox" name="roles" value="{{ r }}" id="role-{{ r }}" {{ 'checked' if r in values.get('roles', []) }}><label class="form-check-label" for="role-{{ r }}">{{ r|role }}</label></div>{% endfor %}
+            <div class="form-text">A GM is booked in any of these roles, wherever the need is highest.</div></div>
+    </div>
+    <div class="mb-3 form-check"><input class="form-check-input" type="checkbox" name="active" value="1" id="active" {{ 'checked' if values.get('active') }}><label class="form-check-label" for="active">Active</label></div>
+    <div class="mb-3"><label class="form-label" for="notes">Notes</label><textarea class="form-control" id="notes" name="notes" rows="2">{{ values.get('notes', '') }}</textarea></div>
+    {% if current_user.is_editor %}<button class="btn btn-primary" type="submit"><i class="bi bi-check-circle"></i> Save</button>{% endif %}
+    </fieldset>
+</form>
+</div></div>
+</div></div>
+{% endblock %}

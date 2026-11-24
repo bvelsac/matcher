@@ -1,0 +1,18 @@
+{% extends "pdc2/base.html" %}
+{% block title %}Log - PDC2{% endblock %}
+{% block body_class %}screen-pdc2-gms{% endblock %}
+{% block content %}
+<h1 class="mb-4"><i class="bi bi-journal-text"></i> Log</h1>
+<div class="card"><div class="card-body p-0"><div class="table-responsive"><table class="table table-sm mb-0">
+    <thead><tr><th>When</th><th>Who</th><th>What</th><th>Half-day</th><th>Details</th></tr></thead>
+    <tbody>
+    {% for e in entries %}
+        <tr><td class="text-nowrap">{{ e.recorded_at|brussels }}</td><td>{{ e.user_name }}</td><td>{{ e.action|replace('_', ' ') }}</td>
+            <td>{% if e.date %}{{ e.date|dayname }} {{ e.period or '' }}{% endif %}</td>
+            <td class="small">{% if e.details %}{% for k, v in e.details.items() if v not in (none, '') %}{{ k }}: {{ v }}{{ '; ' if not loop.last }}{% endfor %}{% endif %}</td></tr>
+    {% else %}
+        <tr><td class="text-muted">Nothing logged yet.</td></tr>
+    {% endfor %}
+    </tbody>
+</table></div></div></div>
+{% endblock %}

@@ -1,0 +1,28 @@
+{% extends "pdc2/base.html" %}
+{% block title %}GMs - PDC2{% endblock %}
+{% block body_class %}screen-pdc2-gms{% endblock %}
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h1><i class="bi bi-people"></i> GMs</h1>
+    {% if current_user.is_editor %}<a class="btn btn-primary" href="{{ url_for('pdc2.gm_form') }}"><i class="bi bi-person-plus"></i> Add GM</a>{% endif %}
+</div>
+<div class="card"><div class="card-body p-0"><div class="table-responsive">
+    <table class="table table-hover mb-0">
+        <thead class="table-light"><tr><th>Name</th><th>Email</th><th>Languages</th><th>Standard role</th><th>Roles</th><th>Active</th></tr></thead>
+        <tbody>
+        {% for g in gms %}
+            <tr class="{{ 'text-muted' if not g.active }}">
+                <td><a class="fw-bold text-decoration-none" href="{{ url_for('pdc2.gm_form', id=g.id) }}">{{ g.name }}</a></td>
+                <td>{{ g.email }}</td>
+                <td>{{ g.languages|join(', ')|upper }}</td>
+                <td>{{ g.standard_role|role }}</td>
+                <td>{{ g.capable_roles|map('role')|join(', ') }}</td>
+                <td>{{ 'yes' if g.active else 'no' }}</td>
+            </tr>
+        {% else %}
+            <tr><td colspan="6" class="text-muted">No GMs yet.</td></tr>
+        {% endfor %}
+        </tbody>
+    </table>
+</div></div></div>
+{% endblock %}

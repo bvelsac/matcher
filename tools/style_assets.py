@@ -48,6 +48,9 @@ CROPS = {
     "invoices": (1170, 960, 1910, 1420),        # cheek, lower right
     "invoice-form": (320, 170, 1060, 630),      # dark profile and nose
     "worklists": (1000, 300, 1740, 760),        # temple and ear
+    "pdc2-week": (200, 0, 940, 460),            # PDC2: forehead, left
+    "pdc2-staff": (1170, 300, 1910, 760),       # PDC2: ear and cheek
+    "pdc2-offers": (300, 1000, 1040, 1460),     # PDC2: microphone and hand
 }
 
 

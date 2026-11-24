@@ -1,0 +1,55 @@
+/*
+ * PDC2: PDC's look (css/pdc.css, docs/visual-style.md) with a few parts of the Io design system
+ * (pdc2/io.css): the meter for how much of the work is covered, the badges on the warmth scale for a
+ * shortage, and the red glass line under today. The screens get their own background and accent.
+ */
+
+:root[data-bs-theme="dark"] body.screen-pdc2-week {
+    --pdc-bg: url("../img/bg-pdc2-week.png");
+    --pdc-bg-position: 50% 50%;
+    --pdc-accent: var(--pdc-gold);
+}
+
+:root[data-bs-theme="dark"] body.screen-pdc2-staff {
+    --pdc-bg: url("../img/bg-pdc2-staff.png");
+    --pdc-bg-position: 50% 50%;
+    --pdc-accent: var(--pdc-rose);
+}
+
+:root[data-bs-theme="dark"] body.screen-pdc2-offers {
+    --pdc-bg: url("../img/bg-pdc2-offers.png");
+    --pdc-bg-position: 50% 50%;
+    --pdc-accent: var(--pdc-peach);
+}
+
+:root[data-bs-theme="dark"] body.screen-pdc2-gms {
+    --pdc-bg: url("../img/bg-interpreters.png");
+    --pdc-bg-position: 50% 60%;
+    --pdc-accent: var(--pdc-lavender);
+}
+
+/* The week: one column per day, each cell a small gauge. */
+.week-grid th[scope="row"] { white-space: nowrap; width: 9rem; }
+.week-grid td.week-cell { min-width: 11rem; vertical-align: top; }
+.week-grid th.is-today { position: relative; }
+.week-grid th.is-today .io-glaslijn { position: absolute; left: 0; right: 0; bottom: 0; }
+.cell-status { display: flex; flex-wrap: wrap; gap: 4px; align-items: center; }
+.cell-figures { display: grid; grid-template-columns: auto 1fr; gap: 0 .5rem; margin: .5rem 0 0; font-size: .8rem; }
+.cell-figures dt { font-weight: 400; color: var(--bs-secondary-color); }
+.cell-figures dd { margin: 0; font-variant-numeric: tabular-nums; }
+.week-grid tr.uncalculated td, .week-grid tr.uncalculated th { font-size: .8rem; }
+
+/* The Io meter keeps its own pixel texture; PDC's page around it stays as it is. */
+.io-meter__spoor { height: 10px; }
+
+.staff-grid td.staff-cell { white-space: nowrap; min-width: 3.2rem; }
+.staff-grid td.is-marked { background: rgba(97, 45, 88, .35); }
+
+.summary-grid td, .summary-grid th { text-align: center; white-space: nowrap; }
+.summary-grid th[scope="row"] { text-align: left; }
+
+.copy-text { white-space: pre-wrap; font-family: Arial, Helvetica, sans-serif; font-size: .9rem; color: var(--bs-body-color);
+    background: rgba(12, 0, 7, .9); padding: .75rem; border: 1px solid var(--bs-border-color); user-select: all; }
+
+/* Io's badge text is small and uppercase; keep it at the size of PDC's badges. */
+.io-badge { height: 22px; font-size: 10px; }

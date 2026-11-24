@@ -14,8 +14,8 @@ interpreter list with its legal priority order, the meetings that need interpret
 (in later phases) availabilities from Google Forms, bookings, confirmations and reports.
 
 The business model is described in [docs/functional-analysis.md](docs/functional-analysis.md).
-A second application, **PDC2**, for the occasional staff (GM) of Verslaggeving, is designed in
-[docs/pdc2-functional-analysis.md](docs/pdc2-functional-analysis.md) (pre-definitive, not built).
+A second application, **PDC2**, for the occasional staff (GM) of Verslaggeving, lives in this repository
+too (`pdc2/`); see [PDC2](#pdc2) below.
 Version 1.2 of that analysis adds what was decided for PDC: the meetings come from **spic**,
 the meeting planning in the repository `bvelsac/crystalclear`. PDC keeps its own copy of them,
 next to its own meetings, and an append-only log of the assignments.
@@ -199,6 +199,38 @@ the browser once with `playwright install chromium`; without Playwright these te
 skipped. Where the CDN for Bootstrap cannot be reached, set `PDC_CDN_DIR` to a folder with the
 unpacked npm packages (see the docstring of that file); `PDC_CHROMIUM` can point at an existing
 Chromium binary.
+
+## PDC2
+
+**PDC2** helps the planner of Verslaggeving decide how many occasional staff members (GM) to book, and on
+which half-days, in which language and role. Design: [docs/pdc2-functional-analysis.md](docs/pdc2-functional-analysis.md)
+(version 1.0). It is a Flask application of its own in `pdc2/`, with its own database and migrations
+(`pdc2/migrations`), sharing PDC's stylesheet and images.
+
+- **The calculation** (`pdc2/calc.py`): the working hours per language that spic estimates per meeting,
+  3.5 revisors per 12 redacteurs, the staff present by the jaarkalender (4 hours per half-day, in their
+  mother tongue), work moved to the next working day where spic's deadline allows it, and staff counted
+  in another role by the two role rules; GMs count 3 hours in the morning, 4 in the afternoon.
+- **The sources** (`pdc2/hal.py`, `pdc2/sources.py`): spic and the jaarkalender offer a read-only API in
+  HAL (HATEOAS, [docs/pdc2-api-contract.md](docs/pdc2-api-contract.md)); PDC2 knows only their entry
+  addresses and follows links. Both APIs are built on the branch `claude/pdc2-api` of their repositories.
+- **Fictitious data**: with `PDC2_SOURCE=fake`, `pdc2/fake.py` answers the same documents as spic and the
+  jaarkalender, with realistic but invented meetings and staff; every screen then says "test data".
+- **The screens** are HTML with htmx (booking, confirming and marking a half-day answer with the part of
+  the page that changed); the look is PDC's with parts of the user's Io design system (`static/pdc2/`).
+
+```bash
+export PDC2_CONFIG=development          # SQLite file pdc2_dev.db, user "developer", fictitious sources
+python -m pdc2 init-db
+python -m pdc2 sample-data              # fictitious GMs, offers and bookings
+flask --app pdc2 run --port 5001        # http://127.0.0.1:5001
+```
+
+In production PDC2 is the service `pdc2` of `docker-compose.yml` (the same image, `PDC_APP=pdc2`), with
+`PDC2_SECRET_KEY`, `PDC2_EDITORS` and the tokens for spic and the jaarkalender in `.env` (see
+`.env.example`). In Codespaces it starts on port 5001 next to PDC. `python -m pdc2 backup FILE` makes a
+copy of its database; its volume `pdc2_data` belongs in the nightly back-up of the server. Tests:
+`tests/pdc2_tests/`.
 
 ## Visual style
 

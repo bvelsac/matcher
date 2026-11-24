@@ -1,0 +1,33 @@
+{% extends "pdc2/base.html" %}
+{% block title %}Offers - PDC2{% endblock %}
+{% block body_class %}screen-pdc2-offers{% endblock %}
+{% block content %}
+{% with icon='bi-calendar-plus', heading='Offers and booking' %}{% include "pdc2/_week_head.html" %}{% endwith %}
+{% if w.result %}
+{% with oob=False %}{% include "pdc2/_summary.html" %}{% endwith %}
+<p class="text-muted">You choose: PDC2 shows the shortage and the GMs who offered each half-day. A booking counts at once (3 hours in the morning, 4 in the afternoon).</p>
+{% for d, period in half_days %}
+{% include "pdc2/_halfday.html" %}
+{% endfor %}
+
+{% if current_user.is_editor %}
+<div class="card mt-4">
+    <div class="card-header"><h6 class="mb-0"><i class="bi bi-telephone"></i> Offer entered by hand</h6></div>
+    <div class="card-body">
+        <form method="post" action="{{ url_for('pdc2.add_offer') }}" class="row g-2 align-items-end">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+            <input type="hidden" name="next" value="{{ request.path }}">
+            <div class="col-md-5"><label class="form-label" for="offer-gm">GM</label>
+                <select class="form-select" id="offer-gm" name="gm_id" required><option value="">Choose...</option>
+                {% for g in gms %}<option value="{{ g.id }}">{{ g.name }} ({{ g.languages|join('/')|upper }})</option>{% endfor %}</select></div>
+            <div class="col-md-3"><label class="form-label" for="offer-date">Date</label>
+                <input class="form-control" type="date" id="offer-date" name="date" value="{{ w.monday.isoformat() }}" required></div>
+            <div class="col-md-2"><label class="form-label" for="offer-period">Half-day</label>
+                <select class="form-select" id="offer-period" name="period"><option>AM</option><option>PM</option></select></div>
+            <div class="col-md-2"><button class="btn btn-primary w-100" type="submit">Add offer</button></div>
+        </form>
+    </div>
+</div>
+{% endif %}
+{% endif %}
+{% endblock %}

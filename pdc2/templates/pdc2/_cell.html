@@ -1,0 +1,24 @@
+{# One day, language and role: the shortage, a meter of how much of the work due is covered, and the figures. #}
+<div class="cell-status">
+    {% if c.shortage > 0 %}
+    <span class="io-badge {{ 'io-badge--heet' if c.shortage > 4 else 'io-badge--warm' }}">{{ c.shortage|hours }} h short</span>
+    {% elif c.due > 0 or c.may_wait > 0 %}
+    <span class="io-badge io-badge--koud">covered</span>
+    {% else %}
+    <span class="text-muted small">no work</span>
+    {% endif %}
+    {% if c.gm_not_needed > 0 %}<span class="io-badge">{{ c.gm_not_needed|hours }} h GM not needed</span>{% endif %}
+</div>
+{% if c.due > 0 %}
+<div class="io-meter mt-2">
+    <div class="io-meter__spoor" role="meter" aria-label="Covered" aria-valuemin="0" aria-valuemax="100" aria-valuenow="{{ (c.covered * 100)|round|int }}"><span class="io-meter__vulling" style="--waarde: {{ (c.covered * 100)|round|int }}%"></span></div>
+</div>
+{% endif %}
+<dl class="cell-figures">
+    <dt>Due</dt><dd>{{ c.due|hours }}{% if c.carried_in %} <span class="text-muted">(of which {{ c.carried_in|hours }} from {{ c.previous_day|dayname }})</span>{% endif %}</dd>
+    {% if c.may_wait %}<dt>May wait</dt><dd>{{ c.may_wait|hours }}</dd>{% endif %}
+    <dt>Staff</dt><dd>{{ c.staff|hours }}</dd>
+    {% if c.gm %}<dt>GM</dt><dd>{{ c.gm|hours }}</dd>{% endif %}
+    {% if c.carried_out %}<dt>To next day</dt><dd>{{ c.carried_out|hours }}</dd>{% endif %}
+</dl>
+{% if c.shortage_from_previous_day > 0 %}<div class="small text-muted">A GM on {{ c.previous_day|dayname }} can do {{ c.shortage_from_previous_day|hours }} h of this.</div>{% endif %}

@@ -1,8 +1,8 @@
 # Functional Analysis
 ## PDC2: booking occasional staff for Verslaggeving
 
-**Version:** 0.9 (pre-definitive, for approval before building)  
-**Date:** 16 November 2026  
+**Version:** 1.0 (first version built)  
+**Date:** 24 November 2026  
 **Document Type:** Conceptual Model & Business Rules
 
 > PDC2 helps the planner of the Verslaggeving directorate decide how many occasional staff members
@@ -19,6 +19,7 @@
 | 0.1 | 26 October 2026 | First draft: sources, calculation, roles, bookings |
 | 0.2 | 26 October 2026 | spic's deadline per meeting instead of fixed pairs of days; meetings without questions bring no work |
 | 0.3 | 27 October 2026 | Next working day |
+| 1.0 | 24 November 2026 | Decisions on the open points (role rules and choice of half-days as proposed, rights by a list in the settings, no estimate for an unknown agenda, retention at least five years); architecture: HATEOAS APIs in spic and JK, htmx, parts of the Io design system, fake sources (9); the first version built |
 | 0.9 | 16 November 2026 | Name PDC2; weeks in concept can be planned (2.1); meetings with an unknown agenda (2.1); the role rules and the proposal of half-days explained, with a proposal for the first version (3.3, 6.2); work no longer needed (6.2); offers entered by hand (2.3); rights (9.3); changes to other systems in one section (10) |
 
 **Terms used in this document**
@@ -81,18 +82,19 @@ Not in scope:
   the meeting's **deadline** in spic is "next day", on that day or the next working day (4.6).
 - A meeting without questions on its agenda has no working hours in spic and brings no work (the user,
   26 October 2026).
-- **Agenda unknown** (proposal). spic marks a meeting whose agenda is not known yet (`agenda_onbekend`).
-  Such a meeting has no working hours yet, but will have work. PDC2 counts it as 0 hours and shows it
-  as a warning on its day ("2 meetings with an unknown agenda"), so the planner knows the shortage of
-  that day may be larger.
+- **Agenda unknown.** spic marks a meeting whose agenda is not known yet (`agenda_onbekend`). Such a
+  meeting has no working hours yet, but will have work. PDC2 counts it as 0 hours, **without an
+  estimate** (the user, 24 November 2026), and shows it as a warning on its day ("2 meetings with an
+  unknown agenda"), so the planner knows the shortage of that day may be larger.
 - A meeting that is cancelled or deleted in spic brings no work.
 - **Every week can be planned, also a week in concept** (the user, 16 November 2026): the planner may
   want to reserve GMs for a week that spic still has in concept. PDC2 therefore receives the weeks in
   concept as well, and shows the week status prominently: the figures of a week in concept are
   provisional. This needs a change in spic's export (10.1).
-- PDC2 reads spic like PDC does: through spic's export, with its own copy and its own token (PDC FA
-  1.3): an update when a screen opens and by a background task. What the export must carry is in
-  10.1.
+- PDC2 reads spic through spic's API for consumers, with a token of its own (10.1). In the first version
+  it reads the week it shows, and the week before it, each time a screen opens; it keeps no copy. A copy
+  kept up to date by the change feed ("since change N", as PDC FA 1.3), with a background task, can come
+  later if reading live turns out too slow or spic is too often unreachable.
 
 ### 2.2 JK: the staff
 
@@ -175,9 +177,8 @@ that day), they mark that half-day "does not count for this planning" (5).
 capable of**, wherever the need is highest, without any warning. Example: GMs who are redacteurs by
 default and have become revisors over time, and are glad to do revision work.
 
-**Fixed rules.** These two rules are fixed in the first version and stated on the week overview. They
-can be made configurable later, when it turns out to be needed (11, point 2). Proposal, to be
-confirmed by the user.
+**Fixed rules.** These two rules are fixed in the first version and stated on the week overview (the
+user, 24 November 2026). They can be made configurable later, when it turns out to be needed.
 
 ---
 
@@ -295,10 +296,10 @@ booking without an offer is allowed but flagged.
   apart from a confirmed one.
 - **BR-GM-004**: A booking is never deleted, only cancelled.
 - **BR-GM-005**: **The planner chooses; PDC2 proposes no half-days on its own** in the first version
-  (proposal, to be confirmed by the user). PDC2 shows the shortage and, next to
+  (the user, 24 November 2026). PDC2 shows the shortage and, next to
   it, the offers that fit (language, role, day); the planner books, and the shortage is recalculated at
   once. An automatic proposal (PDC2 picking a set of offers that covers the shortage, which the planner
-  then accepts or changes) is possible later (11, point 3).
+  then accepts or changes) is possible later.
 - **BR-GM-006**: A booking is **never cancelled automatically**. When the work shrinks (a meeting
   cancelled, an agenda shortened, a week back in concept) PDC2 shows the booked hours that are no longer
   needed on that day, and the planner decides.
@@ -389,8 +390,30 @@ browser tests, as in PDC. Tests and sample data use fictitious names only.
 
 ### 9.3 Rights
 
-Everyone Authelia lets in for PDC2 may read; who may change data is, until settled, a list of user ids
-in PDC2's settings, as PDC does now (proposal; 11, point 4).
+Everyone Authelia lets in for PDC2 may read; who may change data is **a list of user ids in PDC2's
+settings** (`PDC2_EDITORS`; the user, 24 November 2026).
+
+### 9.4 Architecture (the user, 24 November 2026)
+
+- **HATEOAS for the services.** spic and JK offer a read-only API in HAL (`application/hal+json`):
+  PDC2 knows only their entry address and finds everything else by following named links. The contract
+  is in `docs/pdc2-api-contract.md`; the client in `pdc2/hal.py`.
+- **htmx for the client.** The pages are HTML from the server; htmx makes a handling (book, confirm,
+  mark a half-day) answer with the part of the page that changed, and the shortage of the week out of
+  band. That is hypermedia on the browser side as well.
+- **Look.** PDC's look (`docs/visual-style.md`), with parts of the user's **Io** design system: the meter
+  for how much of the work is covered, the badges on its warmth scale for a shortage, and the red glass
+  line under today (`static/pdc2/io.css`).
+- **Fake sources.** With `PDC2_SOURCE=fake`, PDC2 answers the documents of spic and JK itself, with
+  realistic but fictitious data (`pdc2/fake.py`): the same HAL client and calculation run as against the
+  real services. Every screen shows "test data" then. `python -m pdc2 sample-data` adds fictitious GMs,
+  offers and bookings.
+
+### 9.5 Retention
+
+The data of the GMs, the offers and the bookings are kept **at least five years** (the user,
+24 November 2026). PDC2 deletes nothing by itself; how data older than that is removed is decided
+later.
 
 ---
 
@@ -401,7 +424,11 @@ repository, by its own rules, when the user asks for it. The user is the link be
 
 ### 10.1 spic (repository `bvelsac/crystalclear`)
 
-The export for consumers (FA Opnamebeheer §13.2) is not built yet. For PDC2 it needs:
+**Built on 24 November 2026**, on the branch `claude/pdc2-api` (not yet on `main`, not deployed): the
+API of `docs/pdc2-api-contract.md` in `spic/app/afnemers.py`, with tests, and recorded in
+`docs/stand-van-zaken.md` and FA Opnamebeheer §13.2.1. A meeting without questions has `werkuren: null`.
+To deploy: a tag of spic, and `SPIC_AFNEMERS` with real tokens in the server's `.env`. Still to build:
+the change feed and the full list for PDC (not needed by PDC2's first version). What PDC2 needs:
 
 1. **Per meeting**: ID, date, status (planned, cancelled, deleted), week and **week status**, the
    **working hours FR and NL**, the **deadline** (`termijn`: same day or next day) and **agenda unknown**
@@ -416,7 +443,12 @@ The export for consumers (FA Opnamebeheer §13.2) is not built yet. For PDC2 it 
 
 ### 10.2 JK (repository `bvelsac/infracriv`, folder `jaarkalender`)
 
-On a branch, in Dutch, with every label in `taal/nl.json` and `taal/fr.json`, as agreed there:
+**Built on 24 November 2026**, on the branch `claude/pdc2-api` (not yet on `main`, not deployed), with
+tests and in `documentatie/specificatie.md` chapter 18. Choices made there: everyone in JK is listed
+except accounts waiting for activation and the administrator account; a day is a working day when it
+lies in a configured working year and is no weekend day or holiday (recess and suspension count as
+working days); the rule of presence is shared with *Beheer → Aanwezigheden*. To deploy: `JK_API_TOKENS`
+with a token for PDC2 in JK's environment. What PDC2 needs:
 
 1. **Per staff member**: **mother tongue** (NL or FR), **standard role**, and for each other role
    **may**, **rather not** or **not**; editable by the administrators in *Beheer → Medewerkers*.
@@ -457,15 +489,13 @@ common part of the repository, with PDC's tests kept green.
 
 ## 11. Open points
 
-1. ~~Name~~: **PDC2** (the user, 16 November 2026).
-2. **Role rules** (3.3): proposal, two fixed rules in the first version, configurable later if needed.
-   To be confirmed.
-3. **Proposal of half-days** (BR-GM-005): proposal, the planner chooses in the first version; an
-   automatic proposal later, if wanted. To be confirmed.
-4. **Rights**: who may change data in PDC2 (9.3): a list in the settings for now, or an lldap group.
-5. **Agenda unknown** (2.1): counted as 0 hours with a warning (proposal), or an estimate per type of
-   meeting.
-6. **Retention** of the GMs' personal data, the offers and the bookings: how long, and who deletes.
-7. Settled: ~~weeks in concept~~ (can be planned, 2.1, 16 November 2026), ~~meetings without questions~~
+1. **Shared parts with PDC** (10.6): PDC2 reuses PDC's stylesheet and images, and copies its sign-in;
+   moving the sign-in and the Dimona tick into a common part is still to do.
+2. **A copy of spic** kept up to date by the change feed (2.1), if reading live is not enough.
+3. **Removing data older than five years** (9.5).
+4. Settled: ~~name~~ (PDC2, 16 November 2026), ~~role rules~~ (two fixed rules, 24 November 2026),
+   ~~proposal of half-days~~ (the planner chooses, 24 November 2026), ~~rights~~ (a list in the settings,
+   24 November 2026), ~~agenda unknown~~ (no estimate, 24 November 2026), ~~retention~~ (at least five
+   years, 24 November 2026), ~~weeks in concept~~ (can be planned, 2.1, 16 November 2026), ~~meetings without questions~~
    (no work, 26 October 2026), ~~pairs or deadline~~ (spic's deadline, 26 October 2026), ~~next working
    day~~ (27 October 2026).

@@ -1,0 +1,80 @@
+{% extends "pdc2/base.html" %}
+{% block title %}Week {{ w.monday.isocalendar()[1] }} - PDC2{% endblock %}
+{% block body_class %}screen-pdc2-week{% endblock %}
+{% block content %}
+{% with icon='bi-speedometer2', heading='Shortage of the week' %}{% include "pdc2/_week_head.html" %}{% endwith %}
+
+{% if w.result %}
+{% set r = w.result %}
+{% for language in languages %}
+<div class="card mb-4 week-language">
+    <div class="card-header"><h5 class="mb-0"><i class="bi bi-translate"></i> {{ language|upper }}</h5></div>
+    <div class="card-body p-0">
+        <div class="table-responsive">
+            <table class="table mb-0 week-grid">
+                <thead>
+                    <tr>
+                        <th scope="col">Role</th>
+                        {% for d in w.days %}
+                        <th scope="col" class="{{ 'is-today' if d == today }}">{{ d|dayname }}
+                            {% if d == today %}<span class="io-glaslijn" aria-hidden="true"></span><span class="visually-hidden">today</span>{% endif %}</th>
+                        {% endfor %}
+                    </tr>
+                </thead>
+                <tbody>
+                {% for role in roles %}
+                    <tr>
+                        <th scope="row">{{ role|role }}</th>
+                        {% for d in w.days %}
+                        {% set c = r.cell(language, role, d) %}
+                        <td class="week-cell">{% include "pdc2/_cell.html" %}</td>
+                        {% endfor %}
+                    </tr>
+                {% endfor %}
+                {% for role in ('hoofdredacteur', 'vertaler') %}
+                    <tr class="uncalculated">
+                        <th scope="row">{{ role|role }} <small class="text-muted d-block">planned on sight</small></th>
+                        {% for d in w.days %}
+                        <td class="small">{% for n in r.present_uncalculated[(language, role, d)] %}{{ n }}<br>{% else %}<span class="text-muted">-</span>{% endfor %}</td>
+                        {% endfor %}
+                    </tr>
+                {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+    {% for role in roles %}{% if r.carried_beyond.get((language, role)) %}
+    <div class="card-footer small">{{ role|role }}: {{ r.carried_beyond[(language, role)]|hours }} h carried to the first working day of next week.</div>
+    {% endif %}{% endfor %}
+</div>
+{% endfor %}
+
+<div class="row">
+    <div class="col-lg-6 mb-4">
+        <div class="card h-100">
+            <div class="card-header"><h6 class="mb-0"><i class="bi bi-arrow-left-right"></i> Staff counted in another role</h6></div>
+            <div class="card-body small">
+                <p class="text-muted">Staff count first in their standard role. Where a shortage remains, those who <strong>may</strong> take the role are counted there (first those whose own role has a half-day to spare), and only then those who would <strong>rather not</strong>, with a warning. GMs are booked in any role they can take.</p>
+                {% for m in r.moves %}
+                <div>{{ m.date|dayname }} {{ m.period }}: {{ m.person.name }}, {{ m.from_role|role }} &rarr; {{ m.to_role|role }}
+                    {% if m.level == 'liever-niet' %}<span class="io-badge io-badge--heet">rather not</span>{% endif %}</div>
+                {% else %}<div class="text-muted">Nobody.</div>{% endfor %}
+            </div>
+        </div>
+    </div>
+    <div class="col-lg-6 mb-4">
+        <div class="card h-100">
+            <div class="card-header"><h6 class="mb-0"><i class="bi bi-exclamation-triangle"></i> Check</h6></div>
+            <div class="card-body small">
+                {% for d, ms in r.agenda_unknown|dictsort %}
+                <div><span class="io-badge io-badge--warm">agenda unknown</span> {{ d|dayname }}: {{ ms|length }} meeting{{ 's' if ms|length > 1 }} without working hours yet ({{ ms|map(attribute='label')|join(', ') }}); the shortage may be larger.</div>
+                {% endfor %}
+                {% for p in r.not_validated %}<div><span class="io-badge io-badge--warm">not validated</span> {{ p.name }} has no validated calendar and is not counted.</div>{% endfor %}
+                {% for p in r.incomplete %}<div><span class="io-badge io-badge--koud">no role</span> {{ p.name }} has no language or standard role in the jaarkalender and is not counted.</div>{% endfor %}
+                {% if not (r.agenda_unknown or r.not_validated or r.incomplete) %}<div class="text-muted">Nothing to check.</div>{% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+{% endif %}
+{% endblock %}

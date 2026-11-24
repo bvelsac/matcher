@@ -1,0 +1,13 @@
+{% extends "pdc2/base.html" %}
+{% block title %}Dimona - PDC2{% endblock %}
+{% block body_class %}screen-pdc2-gms{% endblock %}
+{% block content %}
+<h1 class="mb-4"><i class="bi bi-list-check"></i> Dimona to declare</h1>
+<div class="card"><div class="card-body p-0"><table class="table mb-0"><tbody>
+{% for b in rows %}
+    <tr><td>{{ b.gm.name }}</td>{% with error=None %}{% include "pdc2/_booking_row.html" %}{% endwith %}</tr>
+{% else %}
+    <tr><td class="text-muted">Nothing to declare.</td></tr>
+{% endfor %}
+</tbody></table></div></div>
+{% endblock %}

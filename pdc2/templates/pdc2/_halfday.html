@@ -1,0 +1,52 @@
+{# One half-day: the GMs who offered it, and the bookings. Answered again by htmx after every booking. #}
+{% set slot = by_half.get((d, period), {'offers': [], 'bookings': []}) %}
+{% set booked = slot.bookings|selectattr('status', 'ne', 'cancelled')|map(attribute='gm_id')|list %}
+<div class="card mb-3 halfday" id="halfday-{{ d.isoformat() }}-{{ period }}">
+    <div class="card-header d-flex justify-content-between align-items-center">
+        <h6 class="mb-0">{{ d|dayname }} {{ period }} <small class="text-muted">({{ 3 if period == 'AM' else 4 }} h per GM)</small></h6>
+        <span class="small">
+        {% for language in languages %}{% for role in calc_roles %}{% set c = w.result.cell(language, role, d) %}
+            {% if c.shortage > 0 %}<span class="io-badge {{ 'io-badge--heet' if c.shortage > 4 else 'io-badge--warm' }}">{{ language|upper }} {{ role|role }} {{ c.shortage|hours }} h</span>{% endif %}
+        {% endfor %}{% endfor %}
+        </span>
+    </div>
+    <div class="card-body p-0">
+        {% if error is defined and error %}<div class="alert alert-danger m-2">{{ error }}</div>{% endif %}
+        <table class="table table-sm mb-0">
+            <tbody>
+            {% for b in slot.bookings|sort(attribute='id') %}
+                <tr class="booking {{ 'text-muted' if b.status == 'cancelled' }}">
+                    <td>{{ b.gm.name }}</td>
+                    <td>{{ b.language|upper }} {{ b.role|role }}{% if b.without_offer %} <span class="io-badge io-badge--warm">no offer</span>{% endif %}</td>
+                    <td>{% if b.status == 'confirmed' %}<span class="io-badge io-badge--koud">confirmed</span>{% elif b.status == 'proposed' %}<span class="io-badge">proposed</span>{% else %}cancelled{% endif %}</td>
+                    <td class="text-end">
+                    {% if current_user.is_editor and b.status != 'cancelled' %}
+                        {% if b.status == 'proposed' %}
+                        <button class="btn btn-sm btn-outline-success" hx-post="{{ url_for('pdc2.booking_action', id=b.id, action='confirm') }}" hx-target="#halfday-{{ d.isoformat() }}-{{ period }}" hx-swap="outerHTML">Confirm</button>
+                        {% endif %}
+                        <button class="btn btn-sm btn-outline-danger" hx-post="{{ url_for('pdc2.booking_action', id=b.id, action='cancel') }}" hx-target="#halfday-{{ d.isoformat() }}-{{ period }}" hx-swap="outerHTML" hx-confirm="Cancel this booking of {{ b.gm.name }}?">Cancel</button>
+                    {% endif %}
+                    </td>
+                </tr>
+            {% endfor %}
+            {% for o in slot.offers|sort(attribute='gm.last_name') if o.gm_id not in booked and o.gm.active %}
+                <tr class="offer">
+                    <td>{{ o.gm.name }}{% if o.source == 'manual' %} <small class="text-muted">(by hand)</small>{% endif %}</td>
+                    <td class="small text-muted">{{ o.gm.languages|join('/')|upper }} &middot; {{ o.gm.capable_roles|map('role')|join(', ') }}</td>
+                    <td colspan="2">
+                    {% if current_user.is_editor %}
+                        <form class="d-flex gap-1 justify-content-end" hx-post="{{ url_for('pdc2.book') }}" hx-target="#halfday-{{ d.isoformat() }}-{{ period }}" hx-swap="outerHTML">
+                            <input type="hidden" name="gm_id" value="{{ o.gm_id }}"><input type="hidden" name="date" value="{{ d.isoformat() }}"><input type="hidden" name="period" value="{{ period }}">
+                            <select class="form-select form-select-sm" name="language" aria-label="Language">{% for l in o.gm.languages %}<option value="{{ l }}">{{ l|upper }}</option>{% endfor %}</select>
+                            <select class="form-select form-select-sm" name="role" aria-label="Role">{% for r in o.gm.capable_roles %}<option value="{{ r }}" {{ 'selected' if r == o.gm.standard_role }}>{{ r|role }}</option>{% endfor %}</select>
+                            <button class="btn btn-sm btn-primary" type="submit">Book</button>
+                        </form>
+                    {% endif %}
+                    </td>
+                </tr>
+            {% endfor %}
+            {% if not slot.offers and not slot.bookings %}<tr><td class="text-muted">No offers.</td></tr>{% endif %}
+            </tbody>
+        </table>
+    </div>
+</div>

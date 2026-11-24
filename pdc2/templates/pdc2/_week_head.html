@@ -1,0 +1,21 @@
+{# The head of every screen of a week: the week, its status in spic, and the way to the next and previous week. #}
+{% set prev = (w.monday - delta7).isoformat() %}{% set next = (w.monday + delta7).isoformat() %}
+<div class="d-flex justify-content-between align-items-center mb-2 flex-wrap gap-2">
+    <h1><i class="bi {{ icon }}"></i> {{ heading }}</h1>
+    <div class="d-flex align-items-center gap-2" hx-boost="true">
+        <a class="btn btn-sm btn-outline-primary" href="{{ url_for(request.endpoint, monday=prev) }}" aria-label="Previous week"><i class="bi bi-chevron-left"></i></a>
+        <span class="fw-bold">Week {{ w.monday.isocalendar()[1] }} &middot; {{ w.monday.strftime('%d/%m') }}&ndash;{{ w.friday.strftime('%d/%m/%Y') }}</span>
+        <a class="btn btn-sm btn-outline-primary" href="{{ url_for(request.endpoint, monday=next) }}" aria-label="Next week"><i class="bi bi-chevron-right"></i></a>
+    </div>
+</div>
+{% if w.status is defined and w.status %}
+<p class="mb-4">
+    {% if w.status == 'definitief' %}<span class="io-badge io-badge--koud">definitive</span>
+    {% elif w.status == 'pre-definitief' %}<span class="io-badge">pre-definitive</span>
+    {% else %}<span class="io-badge io-badge--heet">concept</span>
+        <span class="text-muted ms-2">The week is still in concept in spic: the figures are provisional.</span>{% endif %}
+</p>
+{% endif %}
+{% if w.error is defined and w.error %}
+<div class="alert alert-danger">spic or the jaarkalender cannot be read: {{ w.error }}</div>
+{% endif %}

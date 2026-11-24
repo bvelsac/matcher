@@ -1,4 +1,5 @@
-# PDC on the infracriv platform: one container, its SQLite database on the volume matcher_data.
+# PDC on the infracriv platform: one container, its SQLite database on the volume matcher_data;
+# PDC2 in a second container from the same image, with its database on pdc2_data.
 # Caddy reaches it as matcher:8000 over the shared "infracriv" network, behind Authelia.
 # No "ports:": PDC trusts Authelia's headers and must only be reachable through Caddy.
 name: matcher
@@ -17,6 +18,28 @@ services:
       - matcher_data:/data
     networks: [infracriv]
 
+  # PDC2 (docs/pdc2-functional-analysis.md): the same image, its own database on the volume pdc2_data.
+  # It reads spic and the jaarkalender inside the network, with a token for each (never in a repository).
+  pdc2:
+    image: ghcr.io/bvelsac/matcher:latest
+    build: .
+    restart: unless-stopped
+    environment:
+      TZ: Europe/Brussels
+      PDC_APP: pdc2
+      PDC2_CONFIG: production
+      PDC2_SECRET_KEY: ${PDC2_SECRET_KEY:?Set PDC2_SECRET_KEY in .env}
+      PDC2_EDITORS: ${PDC2_EDITORS:-}
+      PDC2_SOURCE: ${PDC2_SOURCE:-live}
+      PDC2_SPIC_API: ${PDC2_SPIC_API:-http://spic:8000/api/afnemers}
+      PDC2_SPIC_TOKEN: ${PDC2_SPIC_TOKEN:-}
+      PDC2_JK_API: ${PDC2_JK_API:-http://jaarkalender:8000/api/extern}
+      PDC2_JK_TOKEN: ${PDC2_JK_TOKEN:-}
+    command: ["gunicorn", "--bind", "0.0.0.0:8000", "--workers", "2", "--access-logfile", "-", "pdc2:create_app()"]
+    volumes:
+      - pdc2_data:/data
+    networks: [infracriv]
+
 networks:
   infracriv:
     external: true
@@ -24,3 +47,5 @@ networks:
 volumes:
   matcher_data:
     name: matcher_data
+  pdc2_data:
+    name: pdc2_data

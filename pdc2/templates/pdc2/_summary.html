@@ -1,0 +1,17 @@
+{# The shortage of the week in one small table; swapped out of band after every booking. #}
+<div id="shortage-summary" class="card mb-4" {% if oob %}hx-swap-oob="true"{% endif %}>
+    <div class="card-header"><h6 class="mb-0"><i class="bi bi-speedometer2"></i> Still short (hours)</h6></div>
+    <div class="card-body p-0"><div class="table-responsive">
+        <table class="table table-sm mb-0 summary-grid">
+            <thead><tr><th></th>{% for d in w.days %}<th>{{ d|dayname }}</th>{% endfor %}</tr></thead>
+            <tbody>
+            {% for language in languages %}{% for role in calc_roles %}
+                <tr><th scope="row">{{ language|upper }} {{ role|role }}</th>
+                {% for d in w.days %}{% set c = w.result.cell(language, role, d) %}
+                    <td>{% if c.shortage > 0 %}<span class="io-badge {{ 'io-badge--heet' if c.shortage > 4 else 'io-badge--warm' }}">{{ c.shortage|hours }}</span>{% elif c.gm_not_needed > 0 %}<span class="io-badge" title="GM hours not needed">-{{ c.gm_not_needed|hours }}</span>{% else %}<span class="text-muted">0</span>{% endif %}</td>
+                {% endfor %}</tr>
+            {% endfor %}{% endfor %}
+            </tbody>
+        </table>
+    </div></div>
+</div>

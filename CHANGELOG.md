@@ -1,5 +1,17 @@
 # Changelog
 
+## PDC2 0.1.0 (not tagged)
+
+- **PDC2**, the application for the occasional staff of Verslaggeving (`pdc2/`, functional analysis 1.0):
+  the shortage per day, language and role from spic's working hours and the staff of the jaarkalender,
+  with spic's deadlines and the role rules; GMs, offers (by hand or from the Google Form's CSV),
+  bookings, Dimona, marks on staff half-days, an append-only log; its own database and migrations.
+- A **HAL client** that only follows links (HATEOAS) and **fake services** with realistic, fictitious
+  data (`PDC2_SOURCE=fake`), so PDC2 works before the APIs of spic and the jaarkalender are deployed.
+- Screens with **htmx**; PDC's look with the meter, badges and glass line of the **Io** design system.
+- `dbtools.py` takes the folder of the migrations, so PDC and PDC2 each have their own.
+- `docker-compose.yml`: a service `pdc2` from the same image; Codespaces starts PDC2 on port 5001.
+
 ## 0.3.0 - PDC, step 3 (not tagged)
 
 - **The model of the functional analysis 1.2**: one table of meetings for the copy of spic and the

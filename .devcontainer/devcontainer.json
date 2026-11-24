@@ -11,8 +11,9 @@
   "postCreateCommand": "python -m pip install -r requirements.txt",
   // Runs in a terminal of its own and stays in the foreground, so Codespaces does not stop it.
   "postAttachCommand": "sh .devcontainer/start.sh",
-  "forwardPorts": [5000],
+  "forwardPorts": [5000, 5001],
   "portsAttributes": {
-    "5000": {"label": "PDC", "onAutoForward": "openBrowser"}
+    "5000": {"label": "PDC", "onAutoForward": "openBrowser"},
+    "5001": {"label": "PDC2", "onAutoForward": "openBrowser"}
   }
 }

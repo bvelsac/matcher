@@ -11,8 +11,12 @@ nieuwe documentatie "PDC".
 - `docs/pdc-voorstel.md`: wat in het prototype van fase 1 afwijkt van de besluiten, en de voorstellen die op een
   beslissing van de gebruiker wachten.
 - `docs/development-plan.md`: de fasen; `docs/visual-style.md`: de gevraagde stijl.
-- `docs/pdc2-functional-analysis.md` (versie 0.9, pre-definitief, nog niet gebouwd): **PDC2**, de tweede toepassing, voor de
-  gelegenheidsmedewerkers (GM) van de Verslaggeving: tekort per dag uit spic (werk) en de jaarkalender (vast personeel), en het boeken van GM.
+- `docs/pdc2-functional-analysis.md` (versie 1.0): **PDC2**, de tweede toepassing, voor de gelegenheidsmedewerkers (GM)
+  van de Verslaggeving: tekort per dag uit spic (werk) en de jaarkalender (vast personeel), en het boeken van GM. De code
+  staat in `pdc2/` (eigen databank, eigen migraties in `pdc2/migrations`), de tests in `tests/pdc2_tests/`. De API's van
+  spic en de jaarkalender (HATEOAS, HAL) staan in `docs/pdc2-api-contract.md`; PDC2 kent alleen hun ingangsadres en volgt
+  links. `PDC2_SOURCE=fake` geeft realistische maar valse gegevens (`pdc2/fake.py`). Client met htmx; de stijl van PDC met
+  onderdelen van het Io-ontwerpsysteem van de gebruiker (`static/pdc2/`).
 - De vergaderingen komen uit **spic**, in de repository `bvelsac/crystalclear`. De besluiten over de koppeling staan
   daar in `docs/stand-van-zaken.md`, het contract (export, schrijfroute, token) in `docs/FA_opnamebeheer_v1.2.md` §13.2.
   Wijzigt het contract, vraag dan eerst in de sessie van `crystalclear`; de gebruiker is de schakel tussen de twee.

@@ -1,0 +1,51 @@
+/* Io design system (the user's artifact "Io", version 1794702565-2563): tokens, as CSS variables.
+   Generated from its tokens.json; the font is PDC's Arial (docs/visual-style.md). */
+:root {
+    --ruimte-950: #020204;
+    --ruimte-900: #06060b;
+    --ruimte-800: #0c0b18;
+    --ruimte-700: #131128;
+    --ruimte-600: #1c1840;
+    --warmte-1: #1c1157;
+    --warmte-2: #2c1e96;
+    --warmte-3: #2d41cc;
+    --warmte-4: #2a82ea;
+    --warmte-5: #26c2dc;
+    --warmte-6: #3ddc7c;
+    --warmte-7: #b6e23e;
+    --warmte-8: #f3cf5c;
+    --warmte-9: #f5bccb;
+    --warmte-10: #f2eef5;
+    --vlek: #e8e6df;
+    --ster: #cfd3c0;
+    --glas-300: #ff8f54;
+    --glas-400: #e76839;
+    --glas-500: #cd4c27;
+    --glas-600: #b83415;
+    --glas-700: #9f2713;
+    --glas-800: #7c190d;
+    --glas-900: #690a07;
+    --glas-950: #4d0602;
+    --glas-glans: #ffca76;
+    --grond: #06060b;
+    --grond-verhoogd: #131128;
+    --lijn: #2f2a66;
+    --inkt: #efecf7;
+    --inkt-gedempt: #aaa5cc;
+    --op-warmte: #0a0918;
+    --op-glas: #fff6f1;
+    --accent: #e76839;
+    --focus: #f3cf5c;
+    --space-1: 4px;
+    --space-2: 8px;
+    --space-3: 12px;
+    --space-4: 16px;
+    --space-5: 24px;
+    --space-6: 32px;
+    --space-7: 48px;
+    --space-8: 64px;
+    --radius-klein: 2px;
+    --radius-kaart: 3px;
+    --rand-warm: 0 0 0 2px #26c2dc;
+    --font-sans: Arial, Helvetica, sans-serif;
+}

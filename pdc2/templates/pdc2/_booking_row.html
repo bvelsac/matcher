@@ -1,0 +1,13 @@
+<tr id="booking-{{ b.id }}" class="{{ 'text-muted' if b.status == 'cancelled' }}">
+    <td>{{ b.date|dayname }} {{ b.period }}</td>
+    <td>{{ b.language|upper }} {{ b.role|role }}</td>
+    <td>{{ b.status_display }}{% if b.status == 'confirmed' %} &middot; Dimona {{ 'declared' if b.dimona_declared else 'to declare' }}{% endif %}
+        {% if error is defined and error %}<span class="text-danger">{{ error }}</span>{% endif %}</td>
+    <td class="text-end">
+    {% if current_user.is_editor %}
+        {% if b.status == 'proposed' %}<button class="btn btn-sm btn-outline-success" hx-post="{{ url_for('pdc2.booking_action', id=b.id, action='confirm') }}" hx-vals='{"target": "row"}' hx-target="#booking-{{ b.id }}" hx-swap="outerHTML">Confirm</button>{% endif %}
+        {% if b.status == 'confirmed' %}<button class="btn btn-sm btn-outline-primary" hx-post="{{ url_for('pdc2.booking_action', id=b.id, action='undimona' if b.dimona_declared else 'dimona') }}" hx-vals='{"target": "row"}' hx-target="#booking-{{ b.id }}" hx-swap="outerHTML">{{ 'Withdraw Dimona' if b.dimona_declared else 'Dimona declared' }}</button>{% endif %}
+        {% if b.status != 'cancelled' %}<button class="btn btn-sm btn-outline-danger" hx-post="{{ url_for('pdc2.booking_action', id=b.id, action='cancel') }}" hx-vals='{"target": "row"}' hx-target="#booking-{{ b.id }}" hx-swap="outerHTML" hx-confirm="Cancel this booking?">Cancel</button>{% endif %}
+    {% endif %}
+    </td>
+</tr>

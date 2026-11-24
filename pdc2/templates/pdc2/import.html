@@ -1,0 +1,24 @@
+{% extends "pdc2/base.html" %}
+{% block title %}Import offers - PDC2{% endblock %}
+{% block body_class %}screen-pdc2-gms{% endblock %}
+{% block content %}
+<h1 class="mb-4"><i class="bi bi-file-earmark-arrow-up"></i> Import offers</h1>
+<div class="row"><div class="col-lg-8">
+<div class="card mb-4"><div class="card-body">
+    <p>The CSV of the Google Form: a column with the <strong>email address</strong>, a column with the timestamp, and one column per half-day with a date and AM or PM (or VM/NM) in its header, for example <code>2026-11-23 AM</code> or <code>23/11/2026 NM</code>. A cell with "ja", "x" or "beschikbaar" (or "oui", "disponible", "yes") is an offer. A newer answer replaces an older one.</p>
+    {% if current_user.is_editor %}
+    <form method="post" enctype="multipart/form-data" class="d-flex gap-2">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+        <input class="form-control" type="file" name="file" accept=".csv,text/csv" required aria-label="CSV file">
+        <button class="btn btn-primary" type="submit">Import</button>
+    </form>
+    {% endif %}
+</div></div>
+{% if outcome %}
+<div class="card"><div class="card-body">
+    <p><strong>{{ outcome[0] }}</strong> offers recorded.</p>
+    {% if outcome[1] %}<p>Not recognised (add these GMs first, then import again):</p><ul>{% for e in outcome[1] %}<li>{{ e }}</li>{% endfor %}</ul>{% endif %}
+</div></div>
+{% endif %}
+</div></div>
+{% endblock %}

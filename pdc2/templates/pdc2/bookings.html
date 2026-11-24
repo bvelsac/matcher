@@ -1,0 +1,21 @@
+{% extends "pdc2/base.html" %}
+{% block title %}Bookings - PDC2{% endblock %}
+{% block body_class %}screen-pdc2-offers{% endblock %}
+{% block content %}
+{% with icon='bi-envelope-paper', heading='Bookings of the week' %}{% include "pdc2/_week_head.html" %}{% endwith %}
+<p class="text-muted">Per GM, to copy into a mail. PDC2 sends no mail itself.</p>
+{% for gm, rows in per_gm.items() %}
+<div class="card mb-3">
+    <div class="card-header"><h6 class="mb-0">{{ gm.name }} <small class="text-muted">{{ gm.email }}</small></h6></div>
+    <div class="card-body">
+        <pre class="copy-text mb-3">{% for b in rows if b.status != 'cancelled' %}{{ b.date|dayname }} {{ 'morning (3 h)' if b.period == 'AM' else 'afternoon (4 h)' }}: {{ b.role|role }} {{ b.language|upper }}{{ ' (to be confirmed)' if b.status == 'proposed' }}
+{% endfor %}</pre>
+        <table class="table table-sm mb-0"><tbody>
+        {% for b in rows %}{% include "pdc2/_booking_row.html" %}{% endfor %}
+        </tbody></table>
+    </div>
+</div>
+{% else %}
+<p class="text-muted">No bookings this week.</p>
+{% endfor %}
+{% endblock %}
